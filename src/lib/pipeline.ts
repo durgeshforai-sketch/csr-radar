@@ -235,11 +235,15 @@ export async function runPipeline(opts: { trigger: "daily" | "weekly" | "manual"
     const groups = cluster(scored.map((x) => ({ ...x, title: x.a.title })));
     const rows = groups.map((g) => {
       const coveredIds = new Set([g.lead.a.id, ...g.others.map((o) => o.a.id)]);
+      const leadKey = `${g.lead.a.outlet}|${g.lead.a.title}`.toLowerCase();
       const extra = all.filter((x) => !coveredIds.has(x.id) && similarity(x.title, g.lead.a.title) >= SAME_STORY);
       return {
         runId,
         articleId: g.lead.a.id,
-        alsoCoveredBy: [...g.others.map((o) => ({ title: o.a.title, url: o.a.url, outlet: o.a.outlet })), ...extra.map((x) => ({ title: x.title, url: x.url, outlet: x.outlet }))].slice(0, 6),
+        // Same outlet + same headline (e.g. found by two sources) is not "another outlet"
+        alsoCoveredBy: [...g.others.map((o) => ({ title: o.a.title, url: o.a.url, outlet: o.a.outlet })), ...extra.map((x) => ({ title: x.title, url: x.url, outlet: x.outlet }))]
+          .filter((c, i, arr) => `${c.outlet}|${c.title}`.toLowerCase() !== leadKey && arr.findIndex((d) => d.outlet === c.outlet && d.title === c.title) === i)
+          .slice(0, 6),
         score: g.lead.score,
         breakdown: g.lead.breakdown,
         bucket: g.lead.bucket,

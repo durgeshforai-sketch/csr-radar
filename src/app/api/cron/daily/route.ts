@@ -9,7 +9,8 @@ export async function GET(req: Request) {
   await reapStaleRuns();
   const url = new URL(req.url);
   const istDay = new Date(Date.now() + 5.5 * 3600_000).getUTCDay(); // 1 = Monday in IST
-  const weekly = istDay === 1 || url.searchParams.get("weekly") === "1";
+  const force = url.searchParams.get("weekly"); // "1" forces the email, "0" suppresses it (manual checks)
+  const weekly = force === "1" || (force !== "0" && istDay === 1);
   const r = await runPipeline({ trigger: weekly ? "weekly" : "daily", sendEmail: weekly });
   return Response.json({ runId: r.runId, weekly, buckets: r.stats.buckets, errors: r.errors });
 }

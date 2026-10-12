@@ -11,7 +11,7 @@
     "db:generate": "drizzle-kit generate",
     "db:migrate": "drizzle-kit migrate",
     "pipeline": "tsx scripts/run.mts",
-    "eval": "tsx eval/run-eval.ts"
+    "eval": "tsx eval/run-eval.mts"
   },
   "dependencies": {
     "@google/genai": "^2.28.0",

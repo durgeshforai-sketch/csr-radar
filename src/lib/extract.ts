@@ -75,7 +75,8 @@ signalType:
 - policy_change: government / MCA / SEBI / court change or proposal affecting how companies spend CSR funds.
 - other_csr: real CSR news that is none of the above (awards, conclaves, opinion, completed handovers with no new money).
 - not_relevant: not about corporate CSR or philanthropy in India, or a government scheme with no corporate role.
-Only tag a sector when the programme itself delivers it (teaching, training, digital skills, jobs/placement). Sports, health, nutrition, meals or infrastructure alone do not count, even if beneficiaries are students or youth.
+Tag a sector when the programme serves it: schools, school development or upgrades, scholarships, labs and STEM/computer labs, teaching, training, skilling centres, digital skills, jobs/placement all count. Sports, health, nutrition or meals alone do not count, even if beneficiaries are students or youth.
+- A company/foundation funding or opening something new this week (a lab, a centre, a scholarship cohort, a school programme) is new_initiative, not other_csr.
 A story about a sector outside the list (e.g. health only, environment only) is other_csr with empty sectors, unless it is policy_change.
 evidence must be copied character-for-character from the text.`;
 

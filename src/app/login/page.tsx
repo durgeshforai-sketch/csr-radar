@@ -27,9 +27,10 @@ export default async function LoginPage({ searchParams }: { searchParams: Promis
         <input type="hidden" name="next" value={sp.next ?? "/"} />
         <label className="field">
           Password
-          <input type="password" name="password" autoFocus required />
+          <input type="password" name="password" autoFocus required placeholder="Radar@2026" />
         </label>
         {sp.error && <p className="error">That password didn&apos;t match.</p>}
+        <div className="alert small"><b>Examiner access:</b> password <span className="mono">Radar@2026</span></div>
         <button type="submit" className="btn primary">Sign in</button>
       </form>
     </main>
