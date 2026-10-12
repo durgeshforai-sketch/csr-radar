@@ -70,6 +70,11 @@ describe("radar score", () => {
     expect(r.breakdown.rule).toMatch(/Open call.*2026-10-23/);
   });
 
+  it("an open call from a government research body is not auto-Hot (only corporate CSR money is)", () => {
+    const r = run({ signalType: "partner_search", companyType: "government", sectors: [], places: ["Assam"], audienceMatch: false }, { openCall: true, publishedAt: new Date("2026-09-20T00:00:00Z") });
+    expect(r.bucket).not.toBe("call");
+  });
+
   it("policy changes always go to Policy watch", () => {
     expect(run({ signalType: "policy_change", sectors: [] }).bucket).toBe("policy");
   });

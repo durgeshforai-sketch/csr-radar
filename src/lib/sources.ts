@@ -312,7 +312,7 @@ export async function openCalls(s: Settings, now: Date, usage: Usage): Promise<S
   const sectors = s.sectors.filter((x) => x.enabled).map((x) => x.label.toLowerCase()).join(", ");
   const prompt = `Today is ${today}. Search the web for OPEN calls where Indian companies or corporate CSR foundations invite NGOs to apply: CSR RFPs, EOIs, calls for proposals, grant applications, implementation-partner searches.
 Sectors: ${sectors}. Priority regions: ${s.geographies.filter((g) => g.tier !== "national").map((g) => g.label).join(", ")}, then pan-India.
-Only calls published in the last ${OPEN_CALL_LOOKBACK_DAYS} days whose deadline is ${today} or later (or not stated). Include government CSR portals such as csrxchange.gov.in.
+Only calls published in the last ${OPEN_CALL_LOOKBACK_DAYS} days whose deadline is ${today} or later (or not stated). The funder must be a company, a PSU or a corporate CSR foundation (CSR money); listings of such calls on the government CSR portal csrxchange.gov.in count. Exclude government research grants, academic fellowships and procurement tenders.
 Reply ONLY as a JSON array (max 10) of {"title": string, "organisation": string, "deadline": "YYYY-MM-DD"|null, "published": "YYYY-MM-DD"|null, "url": the exact page URL, "summary": one sentence with amount, sectors and geography if stated}.`;
   try {
     const res = await chat({ user: prompt, webSearch: true, temperature: 0, effort: "low" }, usage);

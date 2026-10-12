@@ -31,7 +31,8 @@ export function score(
 
   // An open call for NGO partners (RFP / EOI, deadline not passed, page verified) is always Hot:
   // it is the exact moment she missed last year.
-  if (ctx.openCall && e.signalType !== "not_relevant") {
+  // Only corporate CSR money qualifies (not government research grants or academic calls)
+  if (ctx.openCall && e.signalType !== "not_relevant" && ["private", "psu", "corporate_foundation"].includes(e.companyType)) {
     const lines: ScoreLine[] = [
       { label: "Open call for NGO partners", points: w.partner_search },
       ...(sectorHit ? [{ label: "In her sectors", points: w.sectorFit }] : []),

@@ -1,0 +1,137 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>The Nine Checks — CSR Partnership Radar</title>
+<style>
+  @page { size: 297mm 210mm; margin: 0; }
+  * { box-sizing: border-box; }
+  html, body { margin: 0; }
+  body { width: 297mm; height: 210mm; background: #eef6ef; color: #17202a; font-family: -apple-system, "Segoe UI", Helvetica, Arial, sans-serif; }
+  .page { padding: 8mm 10mm 6mm; height: 210mm; display: flex; flex-direction: column; }
+  h1 { font-family: Georgia, "Times New Roman", serif; font-weight: 600; color: #1f4a4a; font-size: 19.5pt; margin: 0; white-space: nowrap; letter-spacing: -0.2pt; }
+  .sub { color: #4a5560; font-size: 9.5pt; margin: 3pt 0 0; }
+  .cols { display: grid; grid-template-columns: repeat(3, 1fr); gap: 6mm; margin-top: 4mm; flex: 1; }
+  .group h2 { font-size: 14pt; margin: 0; }
+  .group .rule { font-size: 8pt; color: #333; margin: 1pt 0 2.5mm; }
+  .kill h2 { color: #a3302a; } .size h2 { color: #3f4f99; } .bound h2 { color: #a8672a; }
+  .check { border-bottom: 1.2pt solid #cdd9e3; padding-bottom: 2mm; margin-bottom: 2mm; }
+  .check:last-child { border-bottom: 0; }
+  .head { display: flex; justify-content: space-between; align-items: center; gap: 6pt; }
+  .head b { font-size: 10pt; }
+  .pill { font-size: 7.5pt; font-weight: 700; color: #fff; padding: 2.5pt 8pt; border-radius: 99pt; white-space: nowrap; letter-spacing: 0.2pt; }
+  .yes { background: #2f6b47; } .partial { background: #a8672a; } .no { background: #b8402d; }
+  dl { display: grid; grid-template-columns: 14mm 1fr; gap: 1pt 4pt; margin: 3pt 0 0; font-size: 7.2pt; line-height: 1.32; }
+  dt { font-weight: 700; } dd { margin: 0; }
+  .verdict { margin-top: 2mm; background: #dde9e2; border-radius: 8pt; padding: 3mm; text-align: center; font-size: 13pt; font-weight: 700; color: #1f4a4a; }
+  .chips { display: flex; gap: 6pt; flex-wrap: wrap; margin: 2mm 0 1.5mm; justify-content: center; }
+  .chip { background: #e4e8f3; border-radius: 99pt; padding: 3pt 9pt; font-size: 7.6pt; }
+  .cut { border-top: 1.2pt solid #a3302a; padding-top: 2.5mm; text-align: center; color: #a3302a; font-weight: 700; font-size: 8.6pt; }
+  .foot { text-align: center; font-size: 7pt; color: #6b7480; margin-top: 2mm; }
+</style>
+</head>
+<body>
+<div class="page">
+  <h1>The Nine Checks — Should the CSR Partnership Radar Be Built, and How Big?</h1>
+  <p class="sub">Mesa C4 · AI Final · Problem Statement 9 (High) · Ananya, Head of Corporate Partnerships, Pune skilling NGO (case persona) · numbers measured on the live app, 12 Oct 2026</p>
+
+  <div class="cols">
+    <section class="group kill">
+      <h2>Kill Switches</h2>
+      <p class="rule">Any No means: don't build it</p>
+
+      <div class="check">
+        <div class="head"><b>01 · Problem real?</b><span class="pill yes">YES</span></div>
+        <dl>
+          <dt>Evidence:</dt><dd>The brief: CSR is the bulk of the NGO's funding; Ananya hears about roughly a third of relevant announcements; last year a company searched for implementation partners for three months before her team knew the initiative existed.</dd>
+          <dt>So we…:</dt><dd>build. Caveat: Ananya is a case persona; the pain comes from the brief, not from interviews with a real partnerships head.</dd>
+        </dl>
+      </div>
+
+      <div class="check">
+        <div class="head"><b>02 · Workflow repeated?</b><span class="pill yes">YES</span></div>
+        <dl>
+          <dt>Evidence:</dt><dd>Every week, all year. The latest live run scanned 338 stories from 5 sources; 226 fell in the window, 175 were unique, and 21 were worth a call this week. CSR news never stops.</dd>
+          <dt>So we…:</dt><dd>automate it: refresh every morning at 07:30 IST and email the digest every Monday before her outreach week.</dd>
+        </dl>
+      </div>
+
+      <div class="check">
+        <div class="head"><b>03 · Input available?</b><span class="pill partial">PARTIAL</span></div>
+        <dl>
+          <dt>Evidence:</dt><dd>CSR news is public and live (Google News, Bing News, 3 CSR trade-press feeds). But Google News gives headline-only snippets; GDELT rate-limits servers (HTTP 429); open RFPs sit on company sites and portals, not in the news; and the free Google-search quota ran out once on build day.</dd>
+          <dt>So we…:</dt><dd>use 5 isolated sources, add a page-verified open-call finder, penalise headline-only stories (−5), switch to the course OpenRouter key, and write "no named contact" instead of guessing (15 of 25 contacts named, all with a source).</dd>
+        </dl>
+      </div>
+    </section>
+
+    <section class="group size">
+      <h2>Sizing</h2>
+      <p class="rule">Any No means: build something smaller</p>
+
+      <div class="check">
+        <div class="head"><b>04 · Output valuable?</b><span class="pill partial">PARTIAL</span></div>
+        <dl>
+          <dt>Evidence:</dt><dd>Every Hot story gets a one-decision brief: why it matters, evidence quote (170 of 176 verified in the source), score breakdown, contact and a B2B outreach draft (25 drafted; 2 flagged by code for an unsupported number). Extraction eval: 89% accuracy, opportunity recall 6/7. But no real partnerships head has judged the briefs yet.</dd>
+          <dt>So we…:</dt><dd>deliver drafts, not sends; keep every story visible; let the micro-CRM record what she does with each one.</dd>
+        </dl>
+      </div>
+
+      <div class="check">
+        <div class="head"><b>05 · Impact measurable?</b><span class="pill partial">PARTIAL</span></div>
+        <dl>
+          <dt>Evidence:</dt><dd>Activity is fully logged: 15 runs, 15 digests delivered, 0 failed runs, every stage's funnel, source health, tokens and cost. The outcome is not yet: calls made and partnerships won only appear once she moves deals in the CRM (0 moved so far), and the "one third" coverage baseline was never measured.</dd>
+          <dt>So we…:</dt><dd>report activity now; make deal stage and won value (pipeline board) the outcome metric; measure coverage against her old method for a month.</dd>
+        </dl>
+      </div>
+
+      <div class="check">
+        <div class="head"><b>08 · ROI worth it?</b><span class="pill partial">PARTIAL</span></div>
+        <dl>
+          <dt>Evidence:</dt><dd>Cost is measured: ≈ $0.21 of Gemini per daily run (≈ $6 a month), most of it the open-call search; Vercel, Neon and Resend on free tiers. The benefit (one CSR partnership is typically worth lakhs to crores; fewer missed openings) is estimated from the brief, not measured.</dd>
+          <dt>So we…:</dt><dd>build small: India only, her 4 sectors, daily not real-time, drafts not auto-sends, one shared login, no paid data feeds.</dd>
+        </dl>
+      </div>
+    </section>
+
+    <section class="group bound">
+      <h2>Boundary</h2>
+      <p class="rule">Any No means: put a human exactly here</p>
+
+      <div class="check">
+        <div class="head"><b>06 · Failure risk OK without a human?</b><span class="pill no">NO → HUMAN HERE</span></div>
+        <dl>
+          <dt>Evidence:</dt><dd>The worst failures can't be undone: a wrong or tone-deaf email to a company's CSR head, or chasing a fake or expired RFP.</dd>
+          <dt>So we…:</dt><dd>never send outreach; Ananya edits and sends every email herself. Contacts are never guessed, numbers not in the story are flagged in code, RFP pages must load and name the funder, and the digest only goes to her own inbox.</dd>
+        </dl>
+      </div>
+
+      <div class="check">
+        <div class="head"><b>07 · Judgment protected?</b><span class="pill partial">PARTIAL</span></div>
+        <dl>
+          <dt>Evidence:</dt><dd>Ananya owns the big calls: sectors, regions and all 16 scoring weights (Settings, no code), and who to call. But a story the AI misreads could rank low, and she may know someone at a "cold" company that the score can't see.</dd>
+          <dt>So we…:</dt><dd>hide nothing: every Cold story stays listed and ranked with its reason, any story can be drafted on demand, every brief shows its score breakdown, and the CRM has a warm-intro field.</dd>
+        </dl>
+      </div>
+
+      <div class="check">
+        <div class="head"><b>09 · Owner clear?</b><span class="pill partial">PARTIAL</span></div>
+        <dl>
+          <dt>Evidence:</dt><dd>Ananya clearly owns outreach and settings. Nobody is named for the system itself: a feed changing format, OpenRouter credits, the Resend sender domain, the cron.</dd>
+          <dt>So we…:</dt><dd>surface health on the Runs page (per-source status, errors, cost), run CI on every push, and mark quota hits as skipped. A real deployment needs a named technical owner and a verified email domain.</dd>
+        </dl>
+      </div>
+    </section>
+  </div>
+
+  <div class="verdict">Verdict: BUILD — a daily radar, scoped small, with Ananya at three boundaries.</div>
+  <div class="chips">
+    <span class="chip">Kill switches: pass (2 YES, 1 PARTIAL)</span>
+    <span class="chip">Sizing: partial → scoped down (India, 4 sectors, drafts not sends)</span>
+    <span class="chip">Boundary: 1 NO, 2 PARTIAL → she sends every email, owns the weights, sees every Cold story</span>
+  </div>
+  <div class="cut">The Cut: never contacts a company for her, never guesses a contact or a number, never hides a story.</div>
+  <div class="foot">Live app: csr-radar.vercel.app · Code: github.com/durgeshforai-sketch/csr-radar · All AI: Gemini 3.7 Flash via OpenRouter (Google providers only)</div>
+</div>
+</body>
+</html>

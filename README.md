@@ -10,6 +10,8 @@ CSR Radar reads the last 7 days of Indian CSR news **every morning** and ranks e
 
 ![Components map](docs/components-map.png)
 
+**Submission documents:** [Detailed components map (A3, PDF)](docs/components-map-detailed.pdf) · [The Nine Checks (A4, PDF)](docs/nine-checks.pdf) · [Swimlane map (PDF)](docs/components-map.pdf)
+
 ## How it follows the components map
 
 | Map row | Where in the code |
@@ -78,7 +80,7 @@ The contact is either the spokesperson named in the story, or the CSR head found
 ## Evidence that it works
 
 - **Live data**: the deployed site shows the current week's real stories, refreshed every morning.
-- **Unit tests**: `npm test` runs 28 tests covering scoring rules, the override, penalties, geography tiers, dedupe, window, URL canonicalisation, quote verification, the Google News and Bing parsers, query building, the pre-filter, the invented-number guard and journey stages.
+- **Unit tests**: `npm test` runs 29 tests covering scoring rules, the override, penalties, geography tiers, dedupe, window, URL canonicalisation, quote verification, the Google News and Bing parsers, query building, the pre-filter, the invented-number guard and journey stages.
 - **Extraction eval**: `npm run eval` compares a fresh Gemini read with 36 real headlines labelled by hand. Results are in [`eval/results.md`](eval/results.md): **89% 4-class accuracy, opportunity recall 6/7, precision 6/6** on `google/gemini-3.7-flash`, up from 78% and 2/7 for the first prompt (all three versions recorded).
 - **Run log**: the Runs page, for every run in production.
 - **CI**: GitHub Actions runs lint, type-check, tests and a production build on every push (`.github/workflows/ci.yml`).
@@ -106,7 +108,7 @@ npm install
 npm run db:migrate
 npm run pipeline             # one full run from the terminal (add -- --email to send)
 npm run dev                  # http://localhost:3000
-npm test                     # 28 unit tests
+npm test                     # 29 unit tests
 npm run eval                 # extraction accuracy vs labelled headlines
 ```
 

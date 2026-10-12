@@ -36,7 +36,8 @@ export default async function How() {
         </div>
         <div className="row">
           <a className="btn" href="https://github.com/durgeshforai-sketch/csr-radar" target="_blank" rel="noreferrer"><IExt />GitHub repo</a>
-          <a className="btn primary" href="/components-map.png" target="_blank" rel="noreferrer"><IExt />Components map (full size)</a>
+          <a className="btn" href="https://github.com/durgeshforai-sketch/csr-radar/blob/main/docs/nine-checks.pdf" target="_blank" rel="noreferrer"><IExt />The Nine Checks</a>
+          <a className="btn primary" href="https://github.com/durgeshforai-sketch/csr-radar/blob/main/docs/components-map-detailed.pdf" target="_blank" rel="noreferrer"><IExt />Detailed components map</a>
         </div>
       </div>
 
@@ -81,7 +82,7 @@ export default async function How() {
           <div className="card pad-lg stack">
             <h2 className="h2">Evidence</h2>
             <ul className="small ink2" style={{ margin: 0, paddingLeft: 18, display: "grid", gap: 6 }}>
-              <li><b>28 unit tests</b> (scoring rules, override, penalties, geography, dedupe, window, parsers, guards) — run on every push by GitHub Actions.</li>
+              <li><b>29 unit tests</b> (scoring rules, override, penalties, geography, dedupe, window, parsers, guards) — run on every push by GitHub Actions.</li>
               <li><b>Extraction eval:</b> 36 real headlines labelled by hand → <b>89% accuracy, opportunity recall 6/7, precision 6/6</b> (v1 prompt: 78%, 2/7). <a className="link" href="https://github.com/durgeshforai-sketch/csr-radar/blob/main/eval/results.md" target="_blank" rel="noreferrer">Results</a></li>
               <li><b>Configurable:</b> {s.sectors.filter((x) => x.enabled).length} sectors, {s.geographies.length} geographic tiers, {Object.keys(s.weights).length} weights — edit in <Link className="link" href="/settings">Settings</Link>.</li>
             </ul>
