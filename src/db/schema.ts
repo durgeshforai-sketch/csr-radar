@@ -19,8 +19,9 @@ import type { RunStats } from "@/lib/pipeline";
 export const runTrigger = pgEnum("run_trigger", ["daily", "weekly", "manual"]);
 export const runStatus = pgEnum("run_status", ["running", "done", "partial", "failed"]);
 export const bucket = pgEnum("bucket", ["call", "watch", "fyi", "policy", "skip"]);
-// Ananya's outreach pipeline for a story
-export const outreach = pgEnum("outreach", ["new", "contacted", "meeting", "proposal", "won", "lost", "not_relevant"]);
+// Micro-CRM: one deal per company, moved by Ananya
+export const dealStage = pgEnum("deal_stage", ["radar", "researching", "contacted", "meeting", "proposal", "won", "lost", "parked"]);
+export const activityKind = pgEnum("activity_kind", ["note", "call", "email", "meeting", "stage", "intro"]);
 
 // One row: Ananya's sectors, geographies, weights, recipients. Read by every run.
 export const settings = pgTable("settings", {
@@ -74,9 +75,8 @@ export const articles = pgTable(
     companyKey: text(),
     poc: jsonb().$type<Poc>(),
     pitch: jsonb().$type<Pitch>(),
-    outreach: outreach().notNull().default("new"),
-    outreachNote: text(),
-    outreachAt: timestamp({ withTimezone: true }),
+    // Set when the free keyword pre-filter dropped it; still listed under "Cold" so nothing escapes her eye
+    filterReason: text(),
     createdAt: timestamp({ withTimezone: true }).notNull().defaultNow(),
   },
   (t) => [index().on(t.publishedAt), index().on(t.titleKey), index().on(t.companyKey)],
@@ -99,4 +99,51 @@ export const signals = pgTable(
     bucket: bucket().notNull(),
   },
   (t) => [index().on(t.runId), index().on(t.articleId)],
+);
+
+// ---------- Micro-CRM ----------
+
+export const companies = pgTable("companies", {
+  key: text().primaryKey(), // companyKey from text.ts
+  name: text().notNull(),
+  stage: dealStage().notNull().default("radar"),
+  dealValueInr: integer(), // her estimate, ₹
+  nextStep: text(),
+  nextStepDue: timestamp({ withTimezone: true }),
+  warmIntro: text(), // "I know X there" — relationships the score can't see
+  website: text(),
+  notes: text(),
+  updatedAt: timestamp({ withTimezone: true }).notNull().defaultNow(),
+  createdAt: timestamp({ withTimezone: true }).notNull().defaultNow(),
+});
+
+export const contacts = pgTable(
+  "contacts",
+  {
+    id: uuid().primaryKey().defaultRandom(),
+    companyKey: text().notNull(),
+    name: text().notNull(),
+    role: text(),
+    email: text(),
+    phone: text(),
+    linkedin: text(),
+    source: text().notNull(), // "article" | "web_search" | "added by Ananya"
+    sourceUrl: text(),
+    notes: text(),
+    createdAt: timestamp({ withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [index().on(t.companyKey)],
+);
+
+export const activities = pgTable(
+  "activities",
+  {
+    id: uuid().primaryKey().defaultRandom(),
+    companyKey: text().notNull(),
+    articleId: uuid(),
+    kind: activityKind().notNull(),
+    body: text().notNull(),
+    at: timestamp({ withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [index().on(t.companyKey)],
 );

@@ -29,14 +29,14 @@ export function score(
   const enabled = new Set(s.sectors.filter((x) => x.enabled).map((x) => x.key));
   const sectorHit = e.sectors.some((k) => enabled.has(k));
 
-  if (e.signalType === "not_relevant") return { score: 0, bucket: "skip", breakdown: { lines: [], geoTier: tier, rule: "Not about corporate CSR" } };
   if (e.signalType === "policy_change")
-    return { score: 0, bucket: "policy", breakdown: { lines: [], geoTier: tier, rule: "Policy change — always shown in Policy watch" } };
-  if (!sectorHit)
-    return { score: 0, bucket: "skip", breakdown: { lines: [], geoTier: tier, rule: "Outside Ananya's sectors" } };
+    return { score: 50, bucket: "policy", breakdown: { lines: [], geoTier: tier, rule: "Policy change — always shown in Policy watch" } };
 
-  lines.push({ label: SIGNAL_POINTS_LABEL[e.signalType], points: w[e.signalType] });
-  lines.push({ label: "In her sectors", points: w.sectorFit });
+  // Nothing is hidden: off-sector or non-CSR stories still get a score and land in "Cold", with the reason.
+  const typeKey = e.signalType === "not_relevant" ? "other_csr" : e.signalType;
+  lines.push({ label: SIGNAL_POINTS_LABEL[typeKey], points: e.signalType === "not_relevant" ? 0 : w[typeKey] });
+  if (sectorHit) lines.push({ label: "In her sectors", points: w.sectorFit });
+  else lines.push({ label: "Outside her sectors", points: 0 });
   if (e.audienceMatch) lines.push({ label: "Serves her audience (youth / first-gen)", points: w.audienceFit });
 
   const geoPts = { home: w.geoHome, priority: w.geoPriority, national: w.geoNational, other: w.geoOther, unknown: Math.round(w.geoNational / 2) }[tier];
@@ -55,7 +55,15 @@ export function score(
   if (!ctx.evidenceVerified) lines.push({ label: "Evidence not found in source", points: -w.unverifiedPenalty });
   if (e.confidence === "low") lines.push({ label: "Thin source (headline only)", points: -5 });
 
-  const total = Math.max(0, Math.min(100, lines.reduce((a, l) => a + l.points, 0)));
+  let total = Math.max(0, Math.min(100, lines.reduce((a, l) => a + l.points, 0)));
+  if (e.signalType === "not_relevant") {
+    total = Math.min(total, 15);
+    return { score: total, bucket: "skip", breakdown: { lines, geoTier: tier, rule: "Cold: not Indian corporate CSR, per the reader" } };
+  }
+  if (!sectorHit) {
+    total = Math.min(total, s.thresholds.watch - 1);
+    return { score: total, bucket: "skip", breakdown: { lines, geoTier: tier, rule: "Cold: outside her sectors" } };
+  }
 
   // Override: an explicit partner search in her sectors is always a call — that is the moment she missed last year.
   if (e.partnerSearchExplicit && ctx.evidenceVerified && tier !== "other") {

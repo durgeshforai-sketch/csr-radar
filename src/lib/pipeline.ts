@@ -48,13 +48,16 @@ const NOISE = /\b(course|courses|admission|admissions|recruitment|vacancy|vacanc
 
 // The search queries already require CSR context, so this is a cheap negative filter: it removes obvious
 // noise and stories with no link to her sectors, CSR money or policy, before any Gemini call.
-export function passesPrefilter(it: Pick<RawItem, "title" | "snippet">, s: Settings): boolean {
+export function prefilterReason(it: Pick<RawItem, "title" | "snippet">, s: Settings): string | null {
   const text = `${it.title} ${it.snippet}`;
-  if (NOISE.test(it.title)) return false;
-  if (CSR_TERM.test(text) || POLICY_TERM.test(text)) return true;
+  const noise = it.title.match(NOISE);
+  if (noise) return `Looks like an advert or notice ("${noise[0]}")`;
+  if (CSR_TERM.test(text) || POLICY_TERM.test(text)) return null;
   const lc = text.toLowerCase();
-  return s.sectors.filter((x) => x.enabled).some((sec) => sec.keywords.some((k) => new RegExp(`\\b${k.toLowerCase().replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}`).test(lc)));
+  const hit = s.sectors.filter((x) => x.enabled).some((sec) => sec.keywords.some((k) => new RegExp(`\\b${k.toLowerCase().replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}`).test(lc)));
+  return hit ? null : "No CSR, sector or policy terms in the headline";
 }
+export const passesPrefilter = (it: Pick<RawItem, "title" | "snippet">, s: Settings) => prefilterReason(it, s) === null;
 
 export async function runPipeline(opts: { trigger: "daily" | "weekly" | "manual"; sendEmail?: boolean; runId?: string }) {
   const db = getDb();
@@ -121,13 +124,13 @@ export async function runPipeline(opts: { trigger: "daily" | "weekly" | "manual"
     stats.unique = byUrl.size;
 
     // 3 PRE-FILTER — free keyword check before any Gemini call
-    const kept = [...byUrl.entries()].filter(([, r]) => passesPrefilter(r, s));
-    stats.prefilteredOut = byUrl.size - kept.length;
+    const kept = [...byUrl.entries()].map(([k, r]) => [k, r, prefilterReason(r, s)] as const);
+    stats.prefilteredOut = kept.filter((x) => x[2]).length;
     if (kept.length) {
       const inserted = await db
         .insert(schema.articles)
         .values(
-          kept.map(([k, r]) => ({
+          kept.map(([k, r, reason]) => ({
             urlKey: k,
             titleKey: titleKey(r.title),
             url: r.url,
@@ -138,6 +141,7 @@ export async function runPipeline(opts: { trigger: "daily" | "weekly" | "manual"
             origin: r.origin,
             queries: [...new Set(r.queries)].slice(0, 5),
             firstRunId: runId,
+            filterReason: reason,
           })),
         )
         .onConflictDoNothing({ target: schema.articles.urlKey })
@@ -156,7 +160,7 @@ export async function runPipeline(opts: { trigger: "daily" | "weekly" | "manual"
     const done = windowArticles.filter((a) => a.extraction);
     stats.cached = done.length;
     const todo: typeof windowArticles = [];
-    for (const a of windowArticles.filter((x) => !x.extraction)) {
+    for (const a of windowArticles.filter((x) => !x.extraction && !x.filterReason)) {
       const dupe = [...done, ...todo].some((d) => similarity(d.title, a.title) >= SAME_STORY);
       if (dupe) stats.sameStoryMerged++;
       else todo.push(a);
@@ -241,7 +245,32 @@ export async function runPipeline(opts: { trigger: "daily" | "weekly" | "manual"
         bucket: g.lead.bucket,
       };
     });
+    const unread = await db
+      .select()
+      .from(schema.articles)
+      .where(and(gte(schema.articles.publishedAt, windowStart), sql`${schema.articles.extraction} is null`));
+    const coveredElsewhere = new Set(rows.flatMap((r) => r.alsoCoveredBy.map((c) => c.url)));
+    for (const a of unread) {
+      if (coveredElsewhere.has(a.url)) continue; // already shown as "also covered by" on another card
+      rows.push({
+        runId,
+        articleId: a.id,
+        alsoCoveredBy: [],
+        score: 0,
+        breakdown: { lines: [], geoTier: "unknown", rule: a.filterReason ? `Cold: filtered before reading — ${a.filterReason}` : "Cold: not read this run (over the per-run limit or read failed)" },
+        bucket: "skip",
+      });
+    }
     if (rows.length) await db.insert(schema.signals).values(rows);
+
+    // Micro-CRM: every company we see gets a profile (on the radar until Ananya moves it)
+    const seen = new Map<string, string>();
+    for (const a of readable) if (a.companyKey && a.extraction?.company && a.extraction.signalType !== "not_relevant") seen.set(a.companyKey, a.extraction.company);
+    if (seen.size)
+      await db
+        .insert(schema.companies)
+        .values([...seen].map(([key, name]) => ({ key, name })))
+        .onConflictDoNothing();
     stats.scored = rows.length;
     for (const r of rows) stats.buckets[r.bucket]++;
     lap("score");
@@ -314,6 +343,19 @@ export async function enrichArticle(articleId: string, s: Settings, usage = new 
   const poc = await findPoc(a.extraction, a.url, usage);
   const pitch = await draftOutreach({ e: a.extraction, title: a.title, outlet: a.outlet, url: a.url, publishedAt: a.publishedAt, poc }, s, usage);
   await db.update(schema.articles).set({ poc, pitch }).where(eq(schema.articles.id, articleId));
+  if (poc.name && a.companyKey) {
+    const existing = await db.select().from(schema.contacts).where(and(eq(schema.contacts.companyKey, a.companyKey), eq(schema.contacts.name, poc.name)));
+    if (!existing.length)
+      await db.insert(schema.contacts).values({
+        companyKey: a.companyKey,
+        name: poc.name,
+        role: poc.role,
+        source: poc.source,
+        sourceUrl: poc.sourceUrl,
+        linkedin: poc.linkedinSearch,
+        notes: poc.note,
+      });
+  }
   return { poc, pitch, usage };
 }
 

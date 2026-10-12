@@ -1,9 +1,7 @@
 import type { NextConfig } from "next";
 
+// Every page is live data behind a login, rendered per request (no prerendering).
 const nextConfig: NextConfig = {
-  /* config options here */
-  cacheComponents: true,
-  partialPrefetching: true,
   turbopack: {
     rules: {
       "*.css": {
