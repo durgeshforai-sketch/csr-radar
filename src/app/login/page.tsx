@@ -43,6 +43,7 @@ export default async function LoginPage({ searchParams }: { searchParams: Promis
           <button type="submit" className="btn primary block">Enter as examiner →</button>
         </div>
       </form>
+      <a href="/map" className="small" style={{ textAlign: "center", color: "rgba(255,255,255,.7)" }}>See how it works → Components map</a>
       </div>
     </main>
   );

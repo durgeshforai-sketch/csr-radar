@@ -6,6 +6,7 @@ import { latestRun, runningRun } from "@/lib/data";
 import { RunNow } from "@/components/run-now";
 import { Loader } from "@/components/charts";
 import { ago } from "@/components/ui";
+import { SiteFooter } from "@/components/site-footer";
 
 function nextMonday() {
   const ist = new Date(Date.now() + 5.5 * 3600_000);
@@ -70,6 +71,7 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
           <Top />
         </Suspense>
         <Suspense fallback={<div className="page-loading"><Loader purple lg />Loading…</div>}>{children}</Suspense>
+        <SiteFooter />
       </main>
     </div>
   );
