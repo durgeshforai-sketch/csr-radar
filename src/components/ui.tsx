@@ -1,6 +1,7 @@
 import type { Bucket } from "@/lib/score";
 import { SIGNAL_LABEL, type SignalType } from "@/lib/extract";
 import { IDrop, IFlame, IScale, ISnow, ISun } from "./icons";
+import { ScoreRing } from "./charts";
 
 export const inrCrore = (cr: number) => (cr >= 100 ? `₹${Math.round(cr).toLocaleString("en-IN")} Cr` : cr >= 1 ? `₹${+cr.toFixed(1)} Cr` : `₹${Math.round(cr * 100)} L`);
 export const inr = (v: number) => (v >= 1e7 ? `₹${+(v / 1e7).toFixed(2)} Cr` : v >= 1e5 ? `₹${+(v / 1e5).toFixed(1)} L` : `₹${Math.round(v).toLocaleString("en-IN")}`);
@@ -44,21 +45,17 @@ export function SignalChip({ t }: { t: SignalType }) {
 }
 
 export function Score({ v, b }: { v: number; b: Bucket }) {
-  return (
-    <span className="score" title={`Radar score ${v}/100`}>
-      <span className="score-track">
-        <span className="score-fill" style={{ width: `${v}%`, background: TEMP[b].color, display: "block" }} />
-      </span>
-      {v}
-    </span>
-  );
+  return <ScoreRing v={v} b={b} />;
 }
 
-export function Kpi({ v, l, cls }: { v: string | number; l: string; cls?: string }) {
+export function Kpi({ v, l, cls, icon, tint, i }: { v: React.ReactNode; l: string; cls?: string; icon?: React.ReactNode; tint?: string; i?: number }) {
   return (
-    <div className={`kpi ${cls ?? ""}`}>
-      <div className="v">{v}</div>
-      <div className="l">{l}</div>
+    <div className={`kpi rise ${icon ? "" : "plain"} ${cls ?? ""}`} style={{ ["--i" as string]: i ?? 0 }}>
+      {icon && <span className={`ring ${tint ?? "tint-brand"}`}>{icon}</span>}
+      <div>
+        <div className="v">{v}</div>
+        <div className="l">{l}</div>
+      </div>
     </div>
   );
 }

@@ -10,13 +10,13 @@ export function where(e: NonNullable<SignalRow["article"]["extraction"]>) {
   return e.places.length ? e.places.slice(0, 2).join(", ") : e.panIndia ? "Pan-India" : "Location not stated";
 }
 
-export function OppCard({ row, company }: { row: SignalRow; company?: Company }) {
+export function OppCard({ row, company, i = 0 }: { row: SignalRow; company?: Company; i?: number }) {
   const { article: a, signal: s } = row;
   const e = a.extraction!;
   const j = journeyStage(e);
   const warm = s.bucket === "watch";
   return (
-    <article className={`card opp${warm ? " warm" : ""}`}>
+    <article className={`card opp rise${warm ? " warm" : ""}`} style={{ ["--i" as string]: i }}>
       <div className="row between">
         <div className="row" style={{ gap: 6 }}>
           <TempBadge b={s.bucket} />

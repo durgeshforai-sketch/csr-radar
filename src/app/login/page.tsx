@@ -15,6 +15,7 @@ export default async function LoginPage({ searchParams }: { searchParams: Promis
   const sp = await searchParams;
   return (
     <main className="login">
+      <div className="blob" />
       <form action={login} className="card login-card">
         <div className="row" style={{ gap: 12 }}>
           <span className="brand-mark"><IRadar /></span>

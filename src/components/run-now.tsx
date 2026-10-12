@@ -14,7 +14,15 @@ const LABEL: Record<string, string> = {
   deliver: "Sending the email",
 };
 
-export function RunNow({ activeId, email }: { activeId?: string | null; email?: boolean }) {
+function Bars() {
+  return (
+    <span className="loader" aria-hidden>
+      <i /><i /><i /><i />
+    </span>
+  );
+}
+
+export function RunNow({ activeId, email, block, variant = "primary" }: { activeId?: string | null; email?: boolean; block?: boolean; variant?: "primary" | "lime" | "pill" }) {
   const router = useRouter();
   const [runId, setRunId] = useState<string | null>(activeId ?? null);
   const [stage, setStage] = useState<string | null>(null);
@@ -48,15 +56,19 @@ export function RunNow({ activeId, email }: { activeId?: string | null; email?: 
   if (runId) {
     const i = Math.max(0, STAGES.indexOf(stage ?? "collect"));
     return (
-      <div style={{ minWidth: 260 }}>
-        <div className="small pulse" style={{ fontWeight: 600 }}>{LABEL[stage ?? "collect"] ?? "Working"}…</div>
-        <div className="progress" style={{ marginTop: 6 }}><div style={{ width: `${((i + 1) / STAGES.length) * 100}%` }} /></div>
+      <div className="run-live" role="status" style={block ? { minWidth: 0 } : undefined}>
+        <Bars />
+        <div style={{ flex: 1, minWidth: 0 }}>
+          <div className="small" style={{ fontWeight: 700 }}>{LABEL[stage ?? "collect"] ?? "Working"}…</div>
+          <div className="progress" style={{ marginTop: 6, background: "rgba(255,255,255,.15)" }}><div style={{ width: `${((i + 1) / STAGES.length) * 100}%` }} /></div>
+        </div>
       </div>
     );
   }
+  const cls = variant === "pill" ? "pill" : `btn ${variant}${block ? " block" : ""}`;
   return (
-    <div className="row">
-      <button type="button" className="btn primary" onClick={start}><IPlay />{email ? "Run & email digest" : "Refresh now"}</button>
+    <div className={block ? "stack" : "row"} style={{ gap: 6 }}>
+      <button type="button" className={cls} onClick={start}><IPlay />{email ? "Run & email digest" : "Refresh now"}</button>
       {err && <span className="error">{err}</span>}
     </div>
   );

@@ -1,10 +1,9 @@
 import type { Metadata } from "next";
-import { Geist, Geist_Mono, Newsreader } from "next/font/google";
+import { Geist_Mono, Plus_Jakarta_Sans } from "next/font/google";
 import "./globals.css";
 
-const sans = Geist({ subsets: ["latin"], variable: "--font-sans" });
+const sans = Plus_Jakarta_Sans({ subsets: ["latin"], variable: "--font-sans" });
 const mono = Geist_Mono({ subsets: ["latin"], variable: "--font-mono" });
-const serif = Newsreader({ subsets: ["latin"], variable: "--font-serif", axes: ["opsz"] });
 
 export const metadata: Metadata = {
   title: "CSR Radar",
@@ -13,7 +12,7 @@ export const metadata: Metadata = {
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
-    <html lang="en-IN" className={`${sans.variable} ${mono.variable} ${serif.variable}`}>
+    <html lang="en-IN" className={`${sans.variable} ${mono.variable}`}>
       <body>{children}</body>
     </html>
   );

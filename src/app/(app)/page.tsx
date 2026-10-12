@@ -1,13 +1,15 @@
 import Link from "next/link";
 import { connection } from "next/server";
-import { latestRun, runningRun, signalsForRun, type SignalRow } from "@/lib/data";
+import { dailyVolume, latestRun, runningRun, signalsForRun, type SignalRow } from "@/lib/data";
 import { dueNextSteps, stagesByKeys, STAGE_LABEL } from "@/lib/crm";
 import { loadSettings } from "@/lib/settings-store";
 import { SIGNAL_LABEL } from "@/lib/extract";
 import { OppCard, StoryRow } from "@/components/opp-card";
 import { RunNow } from "@/components/run-now";
 import { Bars, Kpi, TEMP, ago, fmtDate, inrCrore } from "@/components/ui";
-import { IDownload, IScale, ISnow, IDrop, IFlame, ISun, IClock } from "@/components/icons";
+import { IDownload, IScale, ISnow, IDrop, IFlame, ISun, IClock, IMail, IUser, INews, IRupee, IRuns } from "@/components/icons";
+import { Donut, Heatmap, TrendChart } from "@/components/charts";
+import { CountUp } from "@/components/count-up";
 
 type SP = { sector?: string; region?: string };
 
@@ -43,7 +45,7 @@ export default async function ThisWeek({ searchParams }: { searchParams: Promise
   const cold = by("skip");
 
   const keys = [...new Set([...hot, ...warm].map((r) => r.article.companyKey).filter(Boolean))] as string[];
-  const [crm, due] = await Promise.all([stagesByKeys(keys), dueNextSteps(7)]);
+  const [crm, due, volume] = await Promise.all([stagesByKeys(keys), dueNextSteps(7), dailyVolume(14)]);
 
   const live = read.filter((r) => r.signal.bucket !== "skip");
   const committed = [...all.filter((r) => r.signal.bucket === "call" || r.signal.bucket === "watch")].reduce((a, r) => a + (r.article.extraction?.amountInrCrore ?? 0), 0);
@@ -61,6 +63,18 @@ export default async function ThisWeek({ searchParams }: { searchParams: Promise
     n: live.filter((r) => r.article.extraction?.signalType === t).length,
   }));
 
+  const DOW = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
+  const dow = (d: Date) => (new Date(d.getTime() + 5.5 * 3600_000).getUTCDay() + 6) % 7;
+  const heatRows = settings.sectors.filter((x) => x.enabled).map((sec) => ({
+    label: sec.label,
+    cells: DOW.map((_, j) => live.filter((r) => r.article.extraction?.sectors.includes(sec.key) && dow(r.article.publishedAt) === j).length),
+  }));
+  const hourIst = new Date(Date.now() + 5.5 * 3600_000).getUTCHours();
+  const greet = hourIst < 12 ? "Good morning" : hourIst < 17 ? "Good afternoon" : "Good evening";
+  const inSector = live.filter((r) => r.article.extraction?.sectors.length).length;
+  const initiatives = read.filter((r) => r.article.extraction?.signalType === "new_initiative").length;
+  const stripes = (n: number, of: number, cap = 22) => Array.from({ length: cap }, (_, k) => k < Math.round((n / Math.max(1, of)) * cap));
+
   const q = (k: keyof SP, v?: string) => {
     const p = new URLSearchParams(Object.entries({ ...sp, [k]: v }).filter(([, x]) => x) as [string, string][]);
     const s = p.toString();
@@ -69,37 +83,76 @@ export default async function ThisWeek({ searchParams }: { searchParams: Promise
 
   return (
     <>
-      <div className="page-head">
+      <section className="hero rise">
+        <div className="blob" />
         <div>
-          <div className="eyebrow">Week of {fmtDate(run.windowStart)} – {fmtDate(run.windowEnd, { day: "numeric", month: "short", year: "numeric" })}</div>
-          <h1 className="h1" style={{ marginTop: 6 }}>This week&apos;s CSR radar</h1>
-        </div>
-        <div className="row">
-          <span className="muted small">Updated {ago(run.finishedAt)} · {stats.collected} stories scanned</span>
-          <a className="btn" href={`/api/export?run=${run.id}`}><IDownload />CSV</a>
-          <RunNow activeId={running?.id} />
-        </div>
-      </div>
-
-      <section className="hero">
-        <div className="hero-left">
-          <div className="eyebrow" style={{ color: "var(--brand)" }}>The week in one minute</div>
-          <p className="h-display">{run.summary?.headline ?? "Your week, ranked."}</p>
+          <h1 className="hello">{greet}, <span>Ananya</span></h1>
+          <p className="lead">{run.summary?.headline ?? "Your week, ranked."}</p>
+          <div className="big">
+            <b><CountUp to={stats.buckets.call} /></b>
+            <span>worth a call this week<br /><span className="delta">{partnerSearches ? `+${partnerSearches} explicit partner search${partnerSearches > 1 ? "es" : ""}` : `${stats.buckets.watch} more warming up`}</span></span>
+          </div>
+          <div className="actions">
+            <RunNow activeId={running?.id} variant="pill" />
+            <a className="pill ghost" href="/api/digest-preview" target="_blank" rel="noreferrer"><IMail />Monday email</a>
+            <a className="pill ghost" href={`/api/export?run=${run.id}`}><IDownload />CSV</a>
+          </div>
           {!!run.summary?.bullets.length && (
-            <ul>
-              {run.summary.bullets.map((b) => (
-                <li key={b}>{b}</li>
-              ))}
-            </ul>
+            <ul className="hero-summary">{run.summary.bullets.slice(0, 3).map((x) => <li key={x}>{x}</li>)}</ul>
           )}
         </div>
-        <div className="hero-right">
-          <Kpi v={stats.buckets.call} l="Worth a call this week" cls="hot" />
-          <Kpi v={stats.buckets.watch} l="Warm — watch closely" />
-          <Kpi v={partnerSearches} l="Explicit partner searches" />
-          <Kpi v={committed ? inrCrore(committed) : "—"} l="CSR money announced (hot + warm)" />
-          <Kpi v={stats.extracted + stats.cached} l="Stories read by Gemini" />
-          <Kpi v={`${sourcesOk}/${stats.sources.length}`} l="Live sources answered" />
+        <div className="hero-mix">
+          <div className="avg"><em>Bar to call · {settings.thresholds.call}</em></div>
+          <div className="mix-col">
+            <div className="v">{committed ? inrCrore(committed) : "—"}</div>
+            <div className="k"><b>+{initiatives}</b>New initiatives · ₹ announced</div>
+            <div className="mix-solid" />
+          </div>
+          <div className="mix-col">
+            <div className="v"><CountUp to={inSector} /></div>
+            <div className="k"><b>{stats.extracted + stats.cached}</b>read · in her sectors</div>
+            <div className="mix-stripes">{stripes(inSector, stats.extracted + stats.cached).map((on, k) => <i key={k} className={on ? "" : "off"} style={{ background: on ? undefined : "#2a2140", animationDelay: `${0.3 + k * 0.03}s` }} />)}</div>
+          </div>
+          <div className="mix-col">
+            <div className="v"><CountUp to={stats.buckets.skip} /></div>
+            <div className="k"><b>Cold</b>still listed for you</div>
+            <div className="mix-stripes dim">{Array.from({ length: 12 }, (_, k) => <i key={k} style={{ animationDelay: `${0.5 + k * 0.04}s` }} />)}</div>
+          </div>
+        </div>
+        <div className="hero-foot">
+          <span>{fmtDate(run.windowStart, { day: "numeric", month: "short" })}</span>
+          <span>Updated {ago(run.finishedAt)} · {stats.collected} stories scanned from {sourcesOk}/{stats.sources.length} live sources</span>
+          <span>{fmtDate(run.windowEnd, { day: "numeric", month: "short" })}</span>
+        </div>
+      </section>
+
+      <section className="section kpis">
+        <Kpi i={1} icon={<IFlame />} tint="tint-hot" v={<CountUp to={stats.buckets.call} />} l="Worth a call this week" />
+        <Kpi i={2} icon={<ISun />} tint="tint-warm" v={<CountUp to={stats.buckets.watch} />} l="Warm — watch closely" />
+        <Kpi i={3} icon={<INews />} tint="tint-brand" v={<CountUp to={stats.extracted + stats.cached} />} l="Stories read by Gemini" />
+        <Kpi i={4} icon={<IUser />} tint="tint-policy" v={<CountUp to={read.filter((r) => r.article.poc?.name).length} />} l="Named contacts found" />
+      </section>
+
+      <section className="section grid-3">
+        <div className="card pad-lg rise" style={{ ["--i" as string]: 2 }}>
+          <div className="card-head">
+            <h2 className="h3 row" style={{ gap: 10 }}><span className="ico tint-hot"><IRuns /></span>Signals over 14 days</h2>
+            <div className="legend"><span><i style={{ background: "var(--hot)" }} />Relevant</span><span><i style={{ background: "var(--brand)", opacity: 0.6 }} />Scanned</span></div>
+          </div>
+          <TrendChart days={volume} />
+        </div>
+        <div className="card pad-lg rise" style={{ ["--i" as string]: 3 }}>
+          <div className="card-head">
+            <h2 className="h3 row" style={{ gap: 10 }}><span className="ico tint-brand"><IClock /></span>Activity by day & sector</h2>
+            <span className="tiny muted">this week</span>
+          </div>
+          <Heatmap rows={heatRows} cols={DOW} />
+        </div>
+        <div className="card pad-lg rise" style={{ ["--i" as string]: 4 }}>
+          <div className="card-head">
+            <h2 className="h3 row" style={{ gap: 10 }}><span className="ico tint-cool"><IRupee /></span>By temperature</h2>
+          </div>
+          <Donut total={stats.scored} label="stories" parts={(["call", "watch", "fyi", "policy", "skip"] as const).map((b) => ({ b, n: stats.buckets[b] }))} />
         </div>
       </section>
 
@@ -144,11 +197,11 @@ export default async function ThisWeek({ searchParams }: { searchParams: Promise
 
       <section className="section">
         <div className="section-head">
-          <h2 className="h2"><span style={{ color: "var(--hot)", display: "inline-flex", width: 22 }}><IFlame /></span>Worth a call this week</h2>
+          <h2 className="h2"><span className="ico tint-hot"><IFlame /></span>Worth a call this week</h2>
           <span className="muted small">Score ≥ {settings.thresholds.call}, or an explicit partner search · {hot.length} {hot.length === 1 ? "company" : "companies"}</span>
         </div>
         {hot.length ? (
-          <div className="opps">{hot.map((r) => <OppCard key={r.signal.id} row={r} company={crm.get(r.article.companyKey ?? "")} />)}</div>
+          <div className="opps">{hot.map((r, i) => <OppCard key={r.signal.id} row={r} i={i} company={crm.get(r.article.companyKey ?? "")} />)}</div>
         ) : (
           <div className="empty">Nothing cleared the bar{sp.sector || sp.region ? " for this filter" : " this week"}. Check Warm and Cold below — you may know someone.</div>
         )}
@@ -156,11 +209,11 @@ export default async function ThisWeek({ searchParams }: { searchParams: Promise
 
       <section className="section">
         <div className="section-head">
-          <h2 className="h2"><span style={{ color: "var(--warm)", display: "inline-flex", width: 22 }}><ISun /></span>Warm — watch closely</h2>
+          <h2 className="h2"><span className="ico tint-warm"><ISun /></span>Warm — watch closely</h2>
           <span className="muted small">Score {settings.thresholds.watch}–{settings.thresholds.call - 1} · {warm.length}</span>
         </div>
         {warm.length ? (
-          <div className="opps">{warm.map((r) => <OppCard key={r.signal.id} row={r} company={crm.get(r.article.companyKey ?? "")} />)}</div>
+          <div className="opps">{warm.map((r, i) => <OppCard key={r.signal.id} row={r} i={i} company={crm.get(r.article.companyKey ?? "")} />)}</div>
         ) : (
           <div className="empty">No warm signals{sp.sector || sp.region ? " for this filter" : ""}.</div>
         )}
@@ -169,7 +222,7 @@ export default async function ThisWeek({ searchParams }: { searchParams: Promise
       <section className="section grid-2">
         <div className="card pad-lg">
           <div className="section-head" style={{ marginBottom: 8 }}>
-            <h2 className="h2"><span style={{ color: "var(--policy)", display: "inline-flex", width: 22 }}><IScale /></span>Policy watch</h2>
+            <h2 className="h2"><span className="ico tint-policy"><IScale /></span>Policy watch</h2>
             <span className="muted small">MCA · SEBI · Companies Act</span>
           </div>
           {policy.length ? (
@@ -179,8 +232,7 @@ export default async function ThisWeek({ searchParams }: { searchParams: Promise
           )}
         </div>
         <div className="card pad-lg stack" style={{ gap: 18 }}>
-          <h2 className="h2">This week at a glance</h2>
-          <div><div className="eyebrow" style={{ marginBottom: 8 }}>By sector</div><Bars items={sectorCounts} /></div>
+          <h2 className="h2">Where the signals are</h2>
           <div><div className="eyebrow" style={{ marginBottom: 8 }}>By region</div><Bars items={regionCounts} /></div>
           <div><div className="eyebrow" style={{ marginBottom: 8 }}>By signal</div><Bars items={typeCounts} /></div>
         </div>
@@ -188,7 +240,7 @@ export default async function ThisWeek({ searchParams }: { searchParams: Promise
 
       <section className="section">
         <div className="section-head">
-          <h2 className="h2"><span style={{ color: "var(--cool)", display: "inline-flex", width: 22 }}><IDrop /></span>Cool — for information</h2>
+          <h2 className="h2"><span className="ico tint-cool"><IDrop /></span>Cool — for information</h2>
           <span className="muted small">In her sectors, below {settings.thresholds.watch} · {cool.length}</span>
         </div>
         {cool.length ? <div className="card list">{cool.map((r) => <StoryRow key={r.signal.id} row={r} />)}</div> : <div className="empty">None.</div>}
@@ -199,7 +251,7 @@ export default async function ThisWeek({ searchParams }: { searchParams: Promise
           <summary className="pad row between">
             <span className="row" style={{ gap: 10 }}>
               <span className="chev">▸</span>
-              <span className="h2 row" style={{ gap: 10 }}><span style={{ color: "var(--cold)", display: "inline-flex", width: 22 }}><ISnow /></span>Cold — below the bar</span>
+              <span className="h2 row" style={{ gap: 10 }}><span className="ico tint-cold"><ISnow /></span>Cold — below the bar</span>
             </span>
             <span className="muted small">{cold.length} stories, ranked · nothing is hidden: you may know someone there</span>
           </summary>

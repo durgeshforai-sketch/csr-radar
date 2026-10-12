@@ -9,7 +9,8 @@ export default async function Runs() {
   const [runs, running] = await Promise.all([listRuns(), runningRun()]);
   const done = runs.filter((r) => r.status !== "running" && r.finishedAt);
   const avgSec = done.length ? Math.round(done.reduce((a, r) => a + (r.finishedAt!.getTime() - r.startedAt.getTime()), 0) / done.length / 1000) : 0;
-  const ok = done.filter((r) => r.status === "done").length;
+  const delivered = done.filter((r) => r.status !== "failed").length;
+  const clean = done.filter((r) => r.status === "done").length;
   const cost = done.reduce((a, r) => a + r.costUsd, 0);
   return (
     <>
@@ -23,7 +24,7 @@ export default async function Runs() {
       </div>
       <div className="row" style={{ gap: 10, marginBottom: 18 }}>
         <div className="kpi"><div className="v">{runs.length}</div><div className="l">Runs logged</div></div>
-        <div className="kpi"><div className="v">{done.length ? `${Math.round((ok / done.length) * 100)}%` : "—"}</div><div className="l">Clean runs (no errors)</div></div>
+        <div className="kpi"><div className="v">{done.length ? `${Math.round((delivered / done.length) * 100)}%` : "—"}</div><div className="l">Runs delivered a digest · {clean} with every source up</div></div>
         <div className="kpi"><div className="v">{avgSec}s</div><div className="l">Average duration</div></div>
         <div className="kpi"><div className="v">${cost.toFixed(3)}</div><div className="l">Gemini cost, all runs</div></div>
       </div>
