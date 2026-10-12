@@ -1,8 +1,7 @@
 import { XMLParser } from "fast-xml-parser";
-import { ThinkingLevel } from "@google/genai";
 import type { Settings } from "./settings";
 import { canonicalUrl, decodeEntities, similarity, splitOutlet } from "./text";
-import { gemini, MODEL, type Usage } from "./gemini";
+import { chat, parseLooseJson, type Usage } from "./gemini";
 
 // Live sources. Each one can fail on its own; the run continues with whatever came back.
 
@@ -243,14 +242,8 @@ Find Indian corporate CSR developments in: ${sectors}. Priority regions: ${place
 Include: companies or corporate foundations announcing new CSR programmes; companies increasing CSR allocation; corporates or CSR foundations inviting NGO implementation partners (RFPs, EOIs, calls for proposals); government/MCA/SEBI changes to CSR rules.
 Return ONLY a JSON array (max 12) of {"headline": exact news headline, "outlet": publication name, "date": "YYYY-MM-DD"}. No commentary.`;
   try {
-    const res = await gemini().models.generateContent({
-      model: MODEL,
-      contents: prompt,
-      config: { tools: [{ googleSearch: {} }], temperature: 0, thinkingConfig: { thinkingLevel: ThinkingLevel.LOW } },
-    });
-    usage.add(res.usageMetadata);
-    const text = (res.text ?? "").replace(/^```(json)?|```$/gm, "").trim();
-    const found = JSON.parse(text.slice(text.indexOf("["), text.lastIndexOf("]") + 1)) as { headline: string; outlet?: string; date?: string }[];
+    const res = await chat({ user: prompt, webSearch: true, temperature: 0, effort: "low" }, usage);
+    const found = parseLooseJson<{ headline: string; outlet?: string; date?: string }[]>(res.text, "[");
 
     // Verify each AI-found headline against the Google News index
     const checked = await pool(found.slice(0, 12), 4, async (f) => {
@@ -269,9 +262,9 @@ Return ONLY a JSON array (max 12) of {"headline": exact news headline, "outlet":
       ms: Date.now() - t,
     };
   } catch (e) {
-    const quota = /RESOURCE_EXHAUSTED|exceeded your current quota/i.test(String(e));
+    const quota = /RESOURCE_EXHAUSTED|exceeded your current quota|OpenRouter 429|OpenRouter 402/i.test(String(e));
     return quota
-      ? { source: "Gemini web search", ok: true, skipped: true, items: [], queries: 1, error: "Skipped: daily Google Search grounding quota reached (resets daily); the feeds still ran", ms: Date.now() - t }
+      ? { source: "Gemini web search", ok: true, skipped: true, items: [], queries: 1, error: "Skipped: search quota or credits reached; the feeds still ran", ms: Date.now() - t }
       : { source: "Gemini web search", ok: false, items: [], queries: 1, error: String(e).slice(0, 200), ms: Date.now() - t };
   }
 }

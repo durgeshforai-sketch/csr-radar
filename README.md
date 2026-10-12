@@ -18,7 +18,7 @@ CSR Radar reads the last 7 days of Indian CSR news **every morning** and ranks e
 | **Input**: live external data | `src/lib/sources.ts`: Google News RSS (≈15 queries built from settings), Bing News RSS (plain-keyword queries from settings, publisher URLs), three CSR trade publications (India CSR, The CSR Journal, The CSR Universe), and Gemini + Google Search as gap-fill. Every AI-found headline is checked against Google News and dropped if no real article matches |
 | **Context**: Ananya's configuration | `src/lib/settings.ts` (schema + defaults), `src/lib/settings-store.ts` (Neon), `/settings` page |
 | **Processing**: clean, pre-filter, verify | `src/lib/text.ts` (canonical URLs, same-story clustering, 7-day window, quote verification); `prefilterReason` in `src/lib/pipeline.ts` |
-| **AI**: Gemini Flash only | `src/lib/extract.ts` (batched structured extraction, JSON schema, temp 0; point of contact), `src/lib/outreach.ts` (B2B email method), `summarise()` in `pipeline.ts` |
+| **AI**: Gemini Flash only | `src/lib/gemini.ts` (OpenRouter client: Google-only provider routing, structured outputs, native Google Search grounding, retries, cost), `src/lib/extract.ts` (batched structured extraction, JSON schema, temp 0; point of contact), `src/lib/outreach.ts` (B2B email method), `summarise()` in `pipeline.ts` |
 | **Decision**: radar score → Hot / Warm / Cool / Cold / Policy | `src/lib/score.ts`. Deterministic and explainable; every point is shown on the story brief |
 | **Output**: email, dashboard, brief, CRM, runs | `src/lib/email.ts` + `src/app/api/snapshot/route.tsx` (PNG via `next/og`); `src/app/(app)/*` pages; `src/lib/crm.ts` + `src/app/actions/crm.ts` |
 
@@ -78,7 +78,7 @@ The contact is either the spokesperson named in the story, or the CSR head found
 
 - **Live data**: the deployed site shows the current week's real stories, refreshed every morning.
 - **Unit tests**: `npm test` runs 26 tests covering scoring rules, the override, penalties, geography tiers, dedupe, window, URL canonicalisation, quote verification, the Google News and Bing parsers, query building, the pre-filter, the invented-number guard and journey stages.
-- **Extraction eval**: `npm run eval` compares a fresh Gemini read with 36 real headlines labelled by hand. Results are in [`eval/results.md`](eval/results.md): **86% 4-class accuracy, opportunity recall 6/7**, up from 78% and 2/7 after one prompt iteration (both versions recorded).
+- **Extraction eval**: `npm run eval` compares a fresh Gemini read with 36 real headlines labelled by hand. Results are in [`eval/results.md`](eval/results.md): **89% 4-class accuracy, opportunity recall 6/7, precision 6/6** on `google/gemini-3.7-flash`, up from 78% and 2/7 for the first prompt (all three versions recorded).
 - **Run log**: the Runs page, for every run in production.
 - **CI**: GitHub Actions runs lint, type-check, tests and a production build on every push (`.github/workflows/ci.yml`).
 - **In-app explainer**: the *How it works* page shows the components map, the nine stages and live run numbers.
@@ -100,7 +100,7 @@ The contact is either the spokesperson named in the story, or the CSR head found
 ## Run it
 
 ```bash
-cp .env.example .env.local   # Neon, Gemini, Resend, password, cron secret
+cp .env.example .env.local   # Neon, OpenRouter key (Gemini Flash), Resend, password, cron secret
 npm install
 npm run db:migrate
 npm run pipeline             # one full run from the terminal (add -- --email to send)
@@ -109,6 +109,6 @@ npm test                     # 26 unit tests
 npm run eval                 # extraction accuracy vs labelled headlines
 ```
 
-**Stack:** Next.js 16 · TypeScript · zod · Gemini Flash (`@google/genai`; every AI task, no other model) · Neon Postgres + Drizzle · Resend · Vercel (hosting + Cron) · GitHub.
+**Stack:** Next.js 16 · TypeScript · zod · Gemini Flash (`google/gemini-3.7-flash` via the course's OpenRouter gateway, pinned to Google's own providers; every AI task, no other model) · Neon Postgres + Drizzle · Resend · Vercel (hosting + Cron) · GitHub.
 
 Built for MESA Cohort 4, AI Final Evaluation, Problem Statement 9 (High difficulty).

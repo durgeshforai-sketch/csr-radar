@@ -14,7 +14,6 @@
     "eval": "tsx eval/run-eval.mts"
   },
   "dependencies": {
-    "@google/genai": "^2.28.0",
     "@neondatabase/serverless": "^1.2.0",
     "drizzle-orm": "^0.45.4",
     "fast-xml-parser": "^5.11.2",

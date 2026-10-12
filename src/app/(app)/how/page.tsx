@@ -31,7 +31,7 @@ export default async function How() {
           <div className="eyebrow">For Ananya &amp; examiners</div>
           <h1 className="h1" style={{ marginTop: 6 }}>How CSR Radar works</h1>
           <p className="muted small" style={{ margin: "6px 0 0", maxWidth: 720 }}>
-            Gemini Flash reads the news; deterministic code ranks it with weights you own; nothing is hidden; you decide. Every AI task uses Gemini Flash.
+            Gemini Flash reads the news; deterministic code ranks it with weights you own; nothing is hidden; you decide. Every AI task uses Gemini Flash (google/gemini-3.7-flash via the OpenRouter gateway, served only by Google).
           </p>
         </div>
         <div className="row">
@@ -81,7 +81,7 @@ export default async function How() {
             <h2 className="h2">Evidence</h2>
             <ul className="small ink2" style={{ margin: 0, paddingLeft: 18, display: "grid", gap: 6 }}>
               <li><b>26 unit tests</b> (scoring rules, override, penalties, geography, dedupe, window, parsers, guards) — run on every push by GitHub Actions.</li>
-              <li><b>Extraction eval:</b> 36 real headlines labelled by hand → <b>86% accuracy, opportunity recall 6/7</b> (v1 prompt: 78%, 2/7). <a className="link" href="https://github.com/durgeshforai-sketch/csr-radar/blob/main/eval/results.md" target="_blank" rel="noreferrer">Results</a></li>
+              <li><b>Extraction eval:</b> 36 real headlines labelled by hand → <b>89% accuracy, opportunity recall 6/7, precision 6/6</b> (v1 prompt: 78%, 2/7). <a className="link" href="https://github.com/durgeshforai-sketch/csr-radar/blob/main/eval/results.md" target="_blank" rel="noreferrer">Results</a></li>
               <li><b>Configurable:</b> {s.sectors.filter((x) => x.enabled).length} sectors, {s.geographies.length} geographic tiers, {Object.keys(s.weights).length} weights — edit in <Link className="link" href="/settings">Settings</Link>.</li>
             </ul>
           </div>

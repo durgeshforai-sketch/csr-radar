@@ -1,6 +1,5 @@
-import { ThinkingLevel } from "@google/genai";
 import { z } from "zod";
-import { gemini, MODEL, withRetry, type Usage } from "./gemini";
+import { chat, parseLooseJson, type Usage } from "./gemini";
 import type { Settings } from "./settings";
 
 // Gemini Flash reads each story and returns facts. It does NOT rank or decide — score.ts does.
@@ -93,21 +92,17 @@ export async function extractBatch(
   s: Settings,
   usage: Usage,
 ): Promise<(Extraction | null)[]> {
-  const res = await withRetry(() =>
-    gemini().models.generateContent({
-      model: MODEL,
-      contents: items.map((a, i) => storyText(i, a)).join("\n\n"),
-      config: {
-        systemInstruction: SYSTEM(s),
-        responseMimeType: "application/json",
-        responseJsonSchema: z.toJSONSchema(Batch),
-        temperature: 0,
-        thinkingConfig: { thinkingLevel: ThinkingLevel.LOW },
-      },
-    }),
+  const res = await chat(
+    {
+      system: SYSTEM(s),
+      user: items.map((a, i) => storyText(i, a)).join("\n\n"),
+      schema: { name: "stories", schema: z.toJSONSchema(Batch) },
+      temperature: 0,
+      effort: "low",
+    },
+    usage,
   );
-  usage.add(res.usageMetadata);
-  const parsed = Batch.parse(JSON.parse(res.text ?? "{}"));
+  const parsed = Batch.parse(JSON.parse(res.text || "{}"));
   const valid = new Set(s.sectors.map((x) => x.key));
   return items.map((_, i) => {
     const e = parsed.stories.find((x) => x.id === i);
@@ -135,24 +130,23 @@ export async function findPoc(e: Extraction, articleUrl: string, usage: Usage): 
   }
   if (!company) return { ...base, name: null, role: null, source: "none", sourceUrl: null, note: "No company named" };
   try {
-    const res = await withRetry(() =>
-      gemini().models.generateContent({
-        model: MODEL,
-        contents: `Who currently leads CSR (or the CSR foundation) at ${company} in India? Search the web.
+    const res = await chat(
+      {
+        user: `Who currently leads CSR (or the CSR foundation) at ${company} in India? Search the web.
 Reply ONLY as JSON {"name": string|null, "role": string|null, "url": the page that states it|null}. If you are not sure, return nulls.`,
-        config: { tools: [{ googleSearch: {} }], temperature: 0, thinkingConfig: { thinkingLevel: ThinkingLevel.LOW } },
-      }),
+        webSearch: true,
+        temperature: 0,
+        effort: "low",
+      },
+      usage,
     );
-    usage.add(res.usageMetadata);
-    const t = res.text ?? "";
-    const j = JSON.parse(t.slice(t.indexOf("{"), t.lastIndexOf("}") + 1)) as { name: string | null; role: string | null; url: string | null };
-    const chunks = res.candidates?.[0]?.groundingMetadata?.groundingChunks ?? [];
-    const groundedUrl = chunks.find((c) => c.web?.uri)?.web?.uri ?? null;
+    const j = parseLooseJson<{ name: string | null; role: string | null; url: string | null }>(res.text, "{");
+    const groundedUrl = res.citations[0]?.url ?? null;
     if (j.name && (j.url || groundedUrl)) {
       return { ...base, name: j.name, role: j.role, source: "web_search", sourceUrl: j.url ?? groundedUrl, note: "Found by web search — verify before outreach" };
     }
   } catch (err) {
-    if (/RESOURCE_EXHAUSTED|exceeded your current quota|UNAVAILABLE|fetch failed/i.test(String(err)))
+    if (/RESOURCE_EXHAUSTED|exceeded your current quota|UNAVAILABLE|fetch failed|OpenRouter (429|402|5\d\d)/i.test(String(err)))
       return { ...base, name: null, role: null, source: "none", sourceUrl: null, note: "Web search unavailable right now — will retry on the next run. Use the LinkedIn search meanwhile.", retry: true };
   }
   return { ...base, name: null, role: null, source: "none", sourceUrl: null, note: "No named contact found — use the LinkedIn search" };

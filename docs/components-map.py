@@ -7,9 +7,9 @@ rows=[
  ("Live news sources","Google · Bing · CSR press",1,["Fetches last 7 days of","CSR news (searches built","from her settings + feeds)"],"#e8f4fb","#d6ebfa","#3b8fd6"),
  ("Neon Postgres","Settings + memory",2,["Ananya's sectors, regions,","weights, NGO profile;","past stories per company"],"#fdf8e2","#fdf0bf","#d9a400"),
  ("Pipeline code","Next.js on Vercel",3,["Dedupe + 7-day window","Free pre-filter (adverts)","Nothing deleted → Cold"],"#eaf7ec","#d3f0d8","#2f9e52"),
- ("Gemini Flash","Reader",4,["Story → structured facts","signal · sector · ₹ · place","+ verbatim evidence quote"],"#fdeef4","#fbd9e7","#d6337a"),
+ ("Gemini 3.7 Flash","Reader · via OpenRouter",4,["Story → structured facts","signal · sector · ₹ · place","+ verbatim evidence quote"],"#fdeef4","#fbd9e7","#d6337a"),
  ("Rules engine","Code · Ananya's weights",3,["Verifies quote in source","Radar score 0–100 →","Hot · Warm · Cool · Cold"],"#f1ecfb","#e2d7fb","#7c3aed"),
- ("Gemini Flash","Writer + web search",4,["Point of contact (sourced)","B2B email draft (JTBD,","Hook·Pain·Value·CTA)"],"#fdeef4","#fbd9e7","#d6337a"),
+ ("Gemini 3.7 Flash","Writer + Google Search",4,["Point of contact (sourced)","B2B email draft (JTBD,","Hook·Pain·Value·CTA)"],"#fdeef4","#fbd9e7","#d6337a"),
  ("Resend + Dashboard","Delivery",5,["Mon email: snapshot +","only Hot companies → link;","dashboard + CRM daily"],"#e6f6f4","#cdeee9","#1a9a8a"),
  ("Ananya","Review gate",5,["Decides who to call","Edits & sends email herself","Moves deal in micro-CRM"],"#fff6ea","#ffe7cc","#f07a1a"),
 ]
@@ -71,7 +71,7 @@ for i,r in enumerate(rows):
     out.append(f'<text x="{cx(r[2])}" y="{y+22+k*18}" text-anchor="middle" font-size="13" fill="#111827">{html.escape(line)}</text>')
 # footer legend
 fy=H+14
-out.append(f'<text x="{AX}" y="{fy}" font-size="13.5" fill="#374151"><tspan font-weight="700">The cut:</tspan> Gemini Flash only extracts facts and drafts; deterministic code decides the score; Ananya decides who to call. Nothing is hidden — Cold stories stay listed with the reason. All AI = Gemini Flash.</tspan></text>')
+out.append(f'<text x="{AX}" y="{fy}" font-size="13.5" fill="#374151"><tspan font-weight="700">The cut:</tspan> Gemini Flash only extracts facts and drafts; deterministic code decides the score; Ananya decides who to call. Nothing is hidden — Cold stories stay listed with the reason. All AI = Gemini Flash (OpenRouter, Google providers only).</tspan></text>')
 out.append('</svg>')
 svg="\n".join(out)
 open("components-map.html","w").write(f'<!doctype html><html><head><meta charset="utf-8"><title>CSR Radar — Components Map</title><style>body{{margin:0;background:#fff}}</style></head><body>{svg}</body></html>')

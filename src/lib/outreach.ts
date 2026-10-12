@@ -1,6 +1,5 @@
-import { ThinkingLevel } from "@google/genai";
 import { z } from "zod";
-import { gemini, MODEL, withRetry, type Usage } from "./gemini";
+import { chat, MODEL, type Usage } from "./gemini";
 import type { Extraction, Poc } from "./extract";
 import type { Settings } from "./settings";
 
@@ -75,21 +74,17 @@ export async function draftOutreach(
     .join("\n");
   const buyer = poc?.name ? `${poc.name}, ${poc.role ?? "role unknown"} (${poc.note})` : `Unknown — address the CSR team at ${e.company ?? "the company"}`;
 
-  const res = await withRetry(() =>
-    gemini().models.generateContent({
-      model: MODEL,
-      contents: `BUYING SIGNAL (the story)\n${story}\n\nBUYER\n${buyer}\n\nBUYER JOURNEY (inferred from the signal)\nStage: ${journey.stage} — ${journey.meaning}. Timing: ${journey.urgency}.\n\nOUR NGO PROFILE (the only facts you may claim about us)\n${profile}`,
-      config: {
-        systemInstruction: SYSTEM,
-        responseMimeType: "application/json",
-        responseJsonSchema: z.toJSONSchema(Draft),
-        temperature: 0.4,
-        thinkingConfig: { thinkingLevel: ThinkingLevel.LOW },
-      },
-    }),
+  const res = await chat(
+    {
+      system: SYSTEM,
+      user: `BUYING SIGNAL (the story)\n${story}\n\nBUYER\n${buyer}\n\nBUYER JOURNEY (inferred from the signal)\nStage: ${journey.stage} — ${journey.meaning}. Timing: ${journey.urgency}.\n\nOUR NGO PROFILE (the only facts you may claim about us)\n${profile}`,
+      schema: { name: "outreach_draft", schema: z.toJSONSchema(Draft) },
+      temperature: 0.4,
+      effort: "low",
+    },
+    usage,
   );
-  usage.add(res.usageMetadata);
-  const d = Draft.parse(JSON.parse(res.text ?? "{}"));
+  const d = Draft.parse(JSON.parse(res.text || "{}"));
   return { ...d, journey, inventedNumbers: inventedNumbers(d.email, `${story}\n${profile}`), model: MODEL };
 }
 

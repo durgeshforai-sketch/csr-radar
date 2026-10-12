@@ -36,7 +36,7 @@ const relevantOk = labels.filter((l, i) => (l.label === "not_relevant") === (toC
 
 const md = `# Extraction eval
 
-Run ${new Date().toISOString().slice(0, 16)} · model ${process.env.GEMINI_MODEL} · ${labels.length} real headlines from the live feeds, labelled by hand.
+Run ${new Date().toISOString().slice(0, 16)} · model ${process.env.GEMINI_MODEL} via OpenRouter · ${labels.length} real headlines from the live feeds, labelled by hand.
 
 | Metric | Result |
 |---|---|

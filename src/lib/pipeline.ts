@@ -1,5 +1,4 @@
 import { and, desc, eq, gte, inArray, isNull, lte, sql } from "drizzle-orm";
-import { ThinkingLevel } from "@google/genai";
 import { getDb, schema } from "@/db";
 import { loadSettings } from "./settings-store";
 import type { Settings } from "./settings";
@@ -8,7 +7,7 @@ import { cluster, companyKey, quoteFound, similarity, SAME_STORY, titleKey, with
 import { extractBatch, findPoc, sourceText, type Extraction } from "./extract";
 import { draftOutreach } from "./outreach";
 import { score, type Bucket } from "./score";
-import { gemini, MODEL, Usage, withRetry } from "./gemini";
+import { chat, MODEL, Usage } from "./gemini";
 import { sendDigest } from "./email";
 
 // The multi-step system. Every stage records counts; a failing source or batch is logged and skipped,
@@ -376,15 +375,16 @@ async function summarise(runId: string, usage: Usage) {
     .limit(20);
   if (!rows.length) return { headline: "A quiet week: nothing in your sectors cleared the bar.", bullets: [] };
   const lines = rows.map((r) => `[${r.bucket}] ${r.extraction?.company ?? "—"}: ${r.extraction?.summary}`).join("\n");
-  const res = await withRetry(() =>
-    gemini().models.generateContent({
-      model: MODEL,
-      contents: `These are this week's CSR signals for an education/skilling NGO's partnerships head, already ranked:\n${lines}\n\nWrite JSON {"headline": one sentence (max 20 words) naming the single most important opportunity, "bullets": 3 short bullets on the week (what to call about first, any trend, any policy change)}. Use only the facts above.`,
-      config: { responseMimeType: "application/json", temperature: 0.2, thinkingConfig: { thinkingLevel: ThinkingLevel.LOW } },
-    }),
+  const res = await chat(
+    {
+      user: `These are this week's CSR signals for an education/skilling NGO's partnerships head, already ranked:\n${lines}\n\nWrite JSON {"headline": one sentence (max 20 words) naming the single most important opportunity, "bullets": 3 short bullets on the week (what to call about first, any trend, any policy change)}. Use only the facts above.`,
+      json: true,
+      temperature: 0.2,
+      effort: "low",
+    },
+    usage,
   );
-  usage.add(res.usageMetadata);
-  const j = JSON.parse(res.text ?? "{}") as { headline?: string; bullets?: string[] };
+  const j = JSON.parse(res.text || "{}") as { headline?: string; bullets?: string[] };
   return { headline: j.headline ?? "", bullets: (j.bullets ?? []).slice(0, 4) };
 }
 
