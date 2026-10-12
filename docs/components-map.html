@@ -1,108 +1,112 @@
-<!doctype html>
-<html lang="en">
-<head>
-<meta charset="utf-8">
-<title>CSR Radar — Components Map</title>
-<style>
-  :root { --ink:#15171c; --ink2:#464b55; --muted:#858a93; --line:#c9c4b6; --paper:#ffffff; --brand:#0d4d47; --brandsoft:#e3efec; --hot:#c2410c; }
-  * { box-sizing: border-box; }
-  body { margin: 0; background: var(--paper); font-family: -apple-system, "Helvetica Neue", Arial, sans-serif; color: var(--ink); }
-  .wrap { width: 1600px; padding: 44px 52px 36px; }
-  h1 { font-size: 34px; margin: 0; letter-spacing: -0.01em; }
-  .sub { font-size: 19px; color: var(--ink2); margin: 8px 0 30px; }
-  .row { display: grid; grid-template-columns: 250px 1fr; gap: 40px; position: relative; margin-bottom: 26px; }
-  .row::before { content: ""; position: absolute; left: 125px; top: 100%; height: 26px; border-left: 2px solid #9a9a9a; }
-  .row.last::before { display: none; }
-  .row::after { content: ""; position: absolute; left: 119px; top: calc(100% + 18px); border: 7px solid transparent; border-top: 9px solid #9a9a9a; }
-  .row.last::after { display: none; }
-  .tag { border: 2px solid var(--line); border-radius: 14px; display: grid; place-items: center; font-weight: 700; font-size: 21px; min-height: 92px; position: relative; text-align: center; padding: 6px; }
-  .tag small { display: block; font-weight: 500; font-size: 13px; color: var(--muted); margin-top: 2px; }
-  .tag::after { content: ""; position: absolute; right: -40px; top: 50%; width: 40px; border-top: 2px solid var(--line); }
-  .boxes { display: grid; gap: 14px; }
-  .box { border: 2px solid var(--line); border-radius: 14px; padding: 15px 20px; }
-  .box b { display: block; font-size: 20px; margin-bottom: 4px; }
-  .box span { font-size: 16px; color: var(--ink2); line-height: 1.45; }
-  .box .tech { display: inline-block; margin-top: 7px; font-size: 13px; font-weight: 600; color: var(--brand); background: var(--brandsoft); border-radius: 6px; padding: 2px 8px; margin-right: 6px; }
-  .hl { border-color: #2a78d6; background: #edf4fd; box-shadow: 0 0 0 1px #2a78d6; }
-  .ai { border-color: #7c5cc4; background: #f4f0fb; }
-  .cols3 { grid-template-columns: repeat(3, 1fr); }
-  .cols4 { grid-template-columns: repeat(4, 1fr); }
-  .cols2 { grid-template-columns: repeat(2, 1fr); }
-  .foot { margin-top: 26px; font-size: 16px; color: var(--ink2); border-top: 1px solid #e5e1d6; padding-top: 16px; line-height: 1.55; }
-  .foot b { color: var(--ink); }
-  .legend { display: flex; gap: 18px; margin-top: 8px; font-size: 14px; color: var(--muted); }
-  .sw { display: inline-block; width: 14px; height: 14px; border-radius: 4px; vertical-align: -2px; margin-right: 6px; border: 2px solid; }
-</style>
-</head>
-<body>
-<div class="wrap">
-  <h1>CSR Partnership Radar · Weekly CSR intelligence digest + micro-CRM — components map</h1>
-  <div class="sub">Gemini reads the news; Ananya's rules rank it; nothing is hidden; she decides. Stack: Gemini Flash · Google News RSS · GDELT · Neon Postgres · Next.js on Vercel (Cron) · Resend · GitHub</div>
-
-  <div class="row">
-    <div class="tag">Trigger</div>
-    <div class="boxes cols2">
-      <div class="box"><b>Every morning, 07:30 IST — Vercel Cron</b><span>Dashboard refreshes daily; on Mondays the same run also sends the digest email.</span><br><span class="tech">/api/cron/daily</span></div>
-      <div class="box"><b>"Refresh now" on the dashboard</b><span>Runs in the background after the response; live progress by stage.</span><br><span class="tech">/api/run · after()</span></div>
-    </div>
-  </div>
-
-  <div class="row">
-    <div class="tag">Input<small>live external data</small></div>
-    <div class="boxes cols3">
-      <div class="box"><b>Google News RSS</b><span>~15 searches built from her sectors × signal types (initiative, partner search, allocation, policy) + her regions, last 7 days.</span></div>
-      <div class="box"><b>GDELT news index</b><span>Second index with publisher URLs. Rate-limited, so isolated: if it fails, the run continues.</span></div>
-      <div class="box ai"><b>Gemini + Google Search (gap-fill)</b><span>Finds announcements the feeds missed. Every AI-found headline must match a real Google News article, or it is dropped.</span></div>
-    </div>
-  </div>
-
-  <div class="row">
-    <div class="tag">Context</div>
-    <div class="boxes cols2">
-      <div class="box"><b>Ananya's settings (Neon)</b><span>Sectors + keywords, geographic tiers (Pune → Maharashtra → India), scoring weights, thresholds, recipients — editable, applied next run.</span></div>
-      <div class="box"><b>Her NGO profile + memory</b><span>Programmes and verified proof points (the only facts outreach may claim); past stories per company for "warming".</span></div>
-    </div>
-  </div>
-
-  <div class="row">
-    <div class="tag">Processing<small>code</small></div>
-    <div class="boxes cols3">
-      <div class="box"><b>Clean</b><span>7-day window, canonical URLs, same-story clustering across outlets, cached reads (never pay twice).</span></div>
-      <div class="box"><b>Free pre-filter</b><span>Removes adverts and notices before any AI call — kept and listed as Cold with the reason.</span></div>
-      <div class="box"><b>Verify</b><span>Gemini's evidence quote must appear in the source text; unverified = penalty, no partner-search override.</span></div>
-    </div>
-  </div>
-
-  <div class="row">
-    <div class="tag">AI<small>Gemini Flash only</small></div>
-    <div class="boxes cols3">
-      <div class="box ai"><b>Read → structured facts</b><span>Signal type, company, sectors, places, ₹ amount, deadline, partner search, audience fit, verbatim evidence. JSON schema, temp 0. Decides nothing.</span></div>
-      <div class="box ai"><b>Point of contact</b><span>Spokesperson named in the story, else web search for the CSR head — kept only with a source link. Never guesses emails.</span></div>
-      <div class="box ai"><b>Outreach draft (B2B method)</b><span>Buyer-journey stage → JTBD → facts vs assumptions → Hook·Pain·Value·CTA → self-check → follow-up. Invented numbers flagged in code.</span></div>
-    </div>
-  </div>
-
-  <div class="row">
-    <div class="tag">Decision<small>code</small></div>
-    <div class="boxes">
-      <div class="box hl"><b>Radar score 0–100 from her weights → Hot · Warm · Cool · Cold · Policy</b><span>Signal + sector + audience + region + amount + freshness + warming − completed − unverified. Explicit partner search in her sectors is always Hot. Every point shown on the brief. Score advises; Ananya decides.</span></div>
-    </div>
-  </div>
-
-  <div class="row last">
-    <div class="tag">Output</div>
-    <div class="boxes cols4">
-      <div class="box"><b>Monday email (Resend)</b><span>Dashboard snapshot image + only the companies that pass, each linking to its brief.</span></div>
-      <div class="box"><b>Dashboard</b><span>This week: summary, Hot/Warm cards, policy watch, Cool, and every Cold story ranked. Filters, CSV.</span></div>
-      <div class="box"><b>Story brief</b><span>Evidence, sources, score breakdown, contact, email draft, deal actions.</span></div>
-      <div class="box"><b>Micro-CRM + Runs</b><span>Company profiles, contacts, deal stage, next steps, activity log, pipeline board · run log per stage.</span></div>
-    </div>
-  </div>
-
-  <div class="foot">
-    <b>The cut:</b> the AI never decides — it extracts facts with quotes; deterministic code ranks with weights Ananya owns. <b>Nothing escapes her eye:</b> filtered and off-sector stories stay listed as Cold with the reason, because she may know someone there. <b>Reliability:</b> per-source isolation, retries, cached reads, evidence verification, stale-run reaper, every stage counted on the Runs page; 24 unit tests; extraction eval 86% (opportunity recall 6/7).
-    <div class="legend"><span><span class="sw" style="border-color:#7c5cc4;background:#f4f0fb"></span>Gemini Flash</span><span><span class="sw" style="border-color:#2a78d6;background:#edf4fd"></span>Deterministic decision</span><span><span class="sw" style="border-color:#c9c4b6"></span>Code / service</span></div>
-  </div>
-</div>
-</body>
-</html>
+<!doctype html><html><head><meta charset="utf-8"><title>CSR Radar — Components Map</title><style>body{margin:0;background:#fff}</style></head><body><svg xmlns="http://www.w3.org/2000/svg" width="1600" height="1246" viewBox="0 0 1600 1246" font-family="Helvetica, Arial, sans-serif">
+<defs><marker id="ar" markerWidth="10" markerHeight="10" refX="8" refY="5" orient="auto"><path d="M0,1 L9,5 L0,9 z" fill="#6b7280"/></marker></defs>
+<rect width="1600" height="1246" fill="#ffffff"/>
+<text x="800.0" y="38" text-anchor="middle" font-size="22" font-weight="700" fill="#111827">CSR Partnership Radar · Weekly CSR Intelligence Digest — Components Map (High)</text>
+<rect x="210" y="124" width="1390" height="118" fill="#eaeefc"/>
+<rect x="210" y="242" width="1390" height="118" fill="#e8f4fb"/>
+<rect x="210" y="360" width="1390" height="118" fill="#fdf8e2"/>
+<rect x="210" y="478" width="1390" height="118" fill="#eaf7ec"/>
+<rect x="210" y="596" width="1390" height="118" fill="#fdeef4"/>
+<rect x="210" y="714" width="1390" height="118" fill="#f1ecfb"/>
+<rect x="210" y="832" width="1390" height="118" fill="#fdeef4"/>
+<rect x="210" y="950" width="1390" height="118" fill="#e6f6f4"/>
+<rect x="210" y="1068" width="1390" height="118" fill="#fff6ea"/>
+<line x1="210.0" y1="70" x2="210.0" y2="1186" stroke="#e5e7eb" stroke-width="1"/>
+<line x1="441.66666666666663" y1="70" x2="441.66666666666663" y2="1186" stroke="#e5e7eb" stroke-width="1"/>
+<line x1="673.3333333333333" y1="70" x2="673.3333333333333" y2="1186" stroke="#e5e7eb" stroke-width="1"/>
+<line x1="905.0" y1="70" x2="905.0" y2="1186" stroke="#e5e7eb" stroke-width="1"/>
+<line x1="1136.6666666666665" y1="70" x2="1136.6666666666665" y2="1186" stroke="#e5e7eb" stroke-width="1"/>
+<line x1="1368.3333333333333" y1="70" x2="1368.3333333333333" y2="1186" stroke="#e5e7eb" stroke-width="1"/>
+<line x1="1600.0" y1="70" x2="1600.0" y2="1186" stroke="#e5e7eb" stroke-width="1"/>
+<line x1="210" y1="124" x2="1600" y2="124" stroke="#e5e7eb" stroke-width="1"/>
+<line x1="210" y1="242" x2="1600" y2="242" stroke="#e5e7eb" stroke-width="1"/>
+<line x1="210" y1="360" x2="1600" y2="360" stroke="#e5e7eb" stroke-width="1"/>
+<line x1="210" y1="478" x2="1600" y2="478" stroke="#e5e7eb" stroke-width="1"/>
+<line x1="210" y1="596" x2="1600" y2="596" stroke="#e5e7eb" stroke-width="1"/>
+<line x1="210" y1="714" x2="1600" y2="714" stroke="#e5e7eb" stroke-width="1"/>
+<line x1="210" y1="832" x2="1600" y2="832" stroke="#e5e7eb" stroke-width="1"/>
+<line x1="210" y1="950" x2="1600" y2="950" stroke="#e5e7eb" stroke-width="1"/>
+<line x1="210" y1="1068" x2="1600" y2="1068" stroke="#e5e7eb" stroke-width="1"/>
+<line x1="210" y1="1186" x2="1600" y2="1186" stroke="#e5e7eb" stroke-width="1"/>
+<rect x="0" y="70" width="1600" height="54" fill="#1f2937"/>
+<rect x="0" y="124" width="210" height="1062" fill="#1f2937"/>
+<text x="105.0" y="103.0" text-anchor="middle" font-size="16" fill="#cbd5e1">Actor</text>
+<text x="325.8333333333333" y="103.0" text-anchor="middle" font-size="17" font-weight="700" fill="#ffffff">Trigger</text>
+<text x="557.5" y="103.0" text-anchor="middle" font-size="17" font-weight="700" fill="#ffffff">Input</text>
+<text x="789.1666666666666" y="103.0" text-anchor="middle" font-size="17" font-weight="700" fill="#ffffff">Context</text>
+<text x="1020.8333333333334" y="103.0" text-anchor="middle" font-size="17" font-weight="700" fill="#ffffff">Processing</text>
+<text x="1252.4999999999998" y="103.0" text-anchor="middle" font-size="17" font-weight="700" fill="#ffffff">AI</text>
+<text x="1484.1666666666665" y="103.0" text-anchor="middle" font-size="17" font-weight="700" fill="#ffffff">Output</text>
+<text x="105.0" y="181.0" text-anchor="middle" font-size="16" font-weight="700" fill="#ffffff">Vercel Cron</text>
+<text x="105.0" y="201.0" text-anchor="middle" font-size="12.5" fill="#94a3b8">Scheduler</text>
+<text x="105.0" y="299.0" text-anchor="middle" font-size="16" font-weight="700" fill="#ffffff">Live news sources</text>
+<text x="105.0" y="319.0" text-anchor="middle" font-size="12.5" fill="#94a3b8">Google News RSS · GDELT</text>
+<text x="105.0" y="417.0" text-anchor="middle" font-size="16" font-weight="700" fill="#ffffff">Neon Postgres</text>
+<text x="105.0" y="437.0" text-anchor="middle" font-size="12.5" fill="#94a3b8">Settings + memory</text>
+<text x="105.0" y="535.0" text-anchor="middle" font-size="16" font-weight="700" fill="#ffffff">Pipeline code</text>
+<text x="105.0" y="555.0" text-anchor="middle" font-size="12.5" fill="#94a3b8">Next.js on Vercel</text>
+<text x="105.0" y="653.0" text-anchor="middle" font-size="16" font-weight="700" fill="#ffffff">Gemini Flash</text>
+<text x="105.0" y="673.0" text-anchor="middle" font-size="12.5" fill="#94a3b8">Reader</text>
+<text x="105.0" y="771.0" text-anchor="middle" font-size="16" font-weight="700" fill="#ffffff">Rules engine</text>
+<text x="105.0" y="791.0" text-anchor="middle" font-size="12.5" fill="#94a3b8">Code · Ananya&#x27;s weights</text>
+<text x="105.0" y="889.0" text-anchor="middle" font-size="16" font-weight="700" fill="#ffffff">Gemini Flash</text>
+<text x="105.0" y="909.0" text-anchor="middle" font-size="12.5" fill="#94a3b8">Writer + web search</text>
+<text x="105.0" y="1007.0" text-anchor="middle" font-size="16" font-weight="700" fill="#ffffff">Resend + Dashboard</text>
+<text x="105.0" y="1027.0" text-anchor="middle" font-size="12.5" fill="#94a3b8">Delivery</text>
+<text x="105.0" y="1125.0" text-anchor="middle" font-size="16" font-weight="700" fill="#ffffff">Ananya</text>
+<text x="105.0" y="1145.0" text-anchor="middle" font-size="12.5" fill="#94a3b8">Review gate</text>
+<rect x="212" y="1070" width="1386" height="114" fill="none" stroke="#f59e0b" stroke-width="2.5" stroke-dasharray="9 7"/>
+<path d="M422.66666666666663,183.0 L557.5,183.0 L557.5,262.0" fill="none" stroke="#6b7280" stroke-width="1.8" stroke-dasharray="5 4" marker-end="url(#ar)"/>
+<circle cx="422.66666666666663" cy="183.0" r="4.5" fill="#22c55e" stroke="#fff" stroke-width="1.5"/>
+<path d="M654.3333333333334,301.0 L1020.8333333333334,301.0 L1020.8333333333334,498.0" fill="none" stroke="#6b7280" stroke-width="1.8" stroke-dasharray="5 4" marker-end="url(#ar)"/>
+<circle cx="654.3333333333334" cy="301.0" r="4.5" fill="#22c55e" stroke="#fff" stroke-width="1.5"/>
+<path d="M886.0,419.0 L1020.8333333333334,419.0 L1020.8333333333334,498.0" fill="none" stroke="#6b7280" stroke-width="1.8" stroke-dasharray="5 4" marker-end="url(#ar)"/>
+<circle cx="886.0" cy="419.0" r="4.5" fill="#22c55e" stroke="#fff" stroke-width="1.5"/>
+<path d="M1117.6666666666667,537.0 L1252.4999999999998,537.0 L1252.4999999999998,616.0" fill="none" stroke="#6b7280" stroke-width="1.8" stroke-dasharray="5 4" marker-end="url(#ar)"/>
+<circle cx="1117.6666666666667" cy="537.0" r="4.5" fill="#22c55e" stroke="#fff" stroke-width="1.5"/>
+<path d="M1252.4999999999998,692.0 L1252.4999999999998,714.0 L1020.8333333333334,714.0 L1020.8333333333334,734.0" fill="none" stroke="#6b7280" stroke-width="1.8" stroke-dasharray="5 4" marker-end="url(#ar)"/>
+<circle cx="1252.4999999999998" cy="692.0" r="4.5" fill="#22c55e" stroke="#fff" stroke-width="1.5"/>
+<path d="M1117.6666666666667,773.0 L1252.4999999999998,773.0 L1252.4999999999998,852.0" fill="none" stroke="#6b7280" stroke-width="1.8" stroke-dasharray="5 4" marker-end="url(#ar)"/>
+<circle cx="1117.6666666666667" cy="773.0" r="4.5" fill="#22c55e" stroke="#fff" stroke-width="1.5"/>
+<path d="M1349.333333333333,891.0 L1484.1666666666665,891.0 L1484.1666666666665,970.0" fill="none" stroke="#6b7280" stroke-width="1.8" stroke-dasharray="5 4" marker-end="url(#ar)"/>
+<circle cx="1349.333333333333" cy="891.0" r="4.5" fill="#22c55e" stroke="#fff" stroke-width="1.5"/>
+<path d="M1484.1666666666665,1046.0 L1484.1666666666665,1088.0" fill="none" stroke="#6b7280" stroke-width="1.8" stroke-dasharray="5 4" marker-end="url(#ar)"/>
+<circle cx="1484.1666666666665" cy="1046.0" r="4.5" fill="#22c55e" stroke="#fff" stroke-width="1.5"/>
+<rect x="229.0" y="146.0" width="193.66666666666666" height="74" rx="7" fill="#dfe5ff" stroke="#5b6cf0" stroke-width="2"/>
+<text x="325.8333333333333" y="168.0" text-anchor="middle" font-size="13" fill="#111827">Runs every morning</text>
+<text x="325.8333333333333" y="186.0" text-anchor="middle" font-size="13" fill="#111827">07:30 IST (+ Refresh now)</text>
+<text x="325.8333333333333" y="204.0" text-anchor="middle" font-size="13" fill="#111827">Mondays → digest</text>
+<rect x="460.6666666666667" y="264.0" width="193.66666666666666" height="74" rx="7" fill="#d6ebfa" stroke="#3b8fd6" stroke-width="2"/>
+<text x="557.5" y="286.0" text-anchor="middle" font-size="13" fill="#111827">Fetches last 7 days of</text>
+<text x="557.5" y="304.0" text-anchor="middle" font-size="13" fill="#111827">CSR news (~15 searches</text>
+<text x="557.5" y="322.0" text-anchor="middle" font-size="13" fill="#111827">built from her settings)</text>
+<rect x="692.3333333333333" y="382.0" width="193.66666666666666" height="74" rx="7" fill="#fdf0bf" stroke="#d9a400" stroke-width="2"/>
+<text x="789.1666666666666" y="404.0" text-anchor="middle" font-size="13" fill="#111827">Ananya&#x27;s sectors, regions,</text>
+<text x="789.1666666666666" y="422.0" text-anchor="middle" font-size="13" fill="#111827">weights, NGO profile;</text>
+<text x="789.1666666666666" y="440.0" text-anchor="middle" font-size="13" fill="#111827">past stories per company</text>
+<rect x="924.0" y="500.0" width="193.66666666666666" height="74" rx="7" fill="#d3f0d8" stroke="#2f9e52" stroke-width="2"/>
+<text x="1020.8333333333334" y="522.0" text-anchor="middle" font-size="13" fill="#111827">Dedupe + 7-day window</text>
+<text x="1020.8333333333334" y="540.0" text-anchor="middle" font-size="13" fill="#111827">Free pre-filter (adverts)</text>
+<text x="1020.8333333333334" y="558.0" text-anchor="middle" font-size="13" fill="#111827">Nothing deleted → Cold</text>
+<rect x="1155.6666666666665" y="618.0" width="193.66666666666666" height="74" rx="7" fill="#fbd9e7" stroke="#d6337a" stroke-width="2"/>
+<text x="1252.4999999999998" y="640.0" text-anchor="middle" font-size="13" fill="#111827">Story → structured facts</text>
+<text x="1252.4999999999998" y="658.0" text-anchor="middle" font-size="13" fill="#111827">signal · sector · ₹ · place</text>
+<text x="1252.4999999999998" y="676.0" text-anchor="middle" font-size="13" fill="#111827">+ verbatim evidence quote</text>
+<rect x="924.0" y="736.0" width="193.66666666666666" height="74" rx="7" fill="#e2d7fb" stroke="#7c3aed" stroke-width="2"/>
+<text x="1020.8333333333334" y="758.0" text-anchor="middle" font-size="13" fill="#111827">Verifies quote in source</text>
+<text x="1020.8333333333334" y="776.0" text-anchor="middle" font-size="13" fill="#111827">Radar score 0–100 →</text>
+<text x="1020.8333333333334" y="794.0" text-anchor="middle" font-size="13" fill="#111827">Hot · Warm · Cool · Cold</text>
+<rect x="1155.6666666666665" y="854.0" width="193.66666666666666" height="74" rx="7" fill="#fbd9e7" stroke="#d6337a" stroke-width="2"/>
+<text x="1252.4999999999998" y="876.0" text-anchor="middle" font-size="13" fill="#111827">Point of contact (sourced)</text>
+<text x="1252.4999999999998" y="894.0" text-anchor="middle" font-size="13" fill="#111827">B2B email draft (JTBD,</text>
+<text x="1252.4999999999998" y="912.0" text-anchor="middle" font-size="13" fill="#111827">Hook·Pain·Value·CTA)</text>
+<rect x="1387.3333333333333" y="972.0" width="193.66666666666666" height="74" rx="7" fill="#cdeee9" stroke="#1a9a8a" stroke-width="2"/>
+<text x="1484.1666666666665" y="994.0" text-anchor="middle" font-size="13" fill="#111827">Mon email: snapshot +</text>
+<text x="1484.1666666666665" y="1012.0" text-anchor="middle" font-size="13" fill="#111827">only Hot companies → link;</text>
+<text x="1484.1666666666665" y="1030.0" text-anchor="middle" font-size="13" fill="#111827">dashboard + CRM daily</text>
+<rect x="1387.3333333333333" y="1090.0" width="193.66666666666666" height="74" rx="7" fill="#ffe7cc" stroke="#f07a1a" stroke-width="2"/>
+<text x="1484.1666666666665" y="1112.0" text-anchor="middle" font-size="13" fill="#111827">Decides who to call</text>
+<text x="1484.1666666666665" y="1130.0" text-anchor="middle" font-size="13" fill="#111827">Edits &amp; sends email herself</text>
+<text x="1484.1666666666665" y="1148.0" text-anchor="middle" font-size="13" fill="#111827">Moves deal in micro-CRM</text>
+<text x="210" y="1220" font-size="13.5" fill="#374151"><tspan font-weight="700">The cut:</tspan> Gemini Flash only extracts facts and drafts; deterministic code decides the score; Ananya decides who to call. Nothing is hidden — Cold stories stay listed with the reason. All AI = Gemini Flash.</tspan></text>
+</svg></body></html>
