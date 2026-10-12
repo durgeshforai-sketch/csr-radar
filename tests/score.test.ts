@@ -24,7 +24,7 @@ const base: Extraction = {
   whyItMatters: "x",
   confidence: "high",
 };
-const ctx = { publishedAt: new Date("2026-10-11T06:00:00Z"), now, evidenceVerified: true, priorSignals: 0 };
+const ctx: { publishedAt: Date; now: Date; evidenceVerified: boolean; priorSignals: number; openCall?: boolean } = { publishedAt: new Date("2026-10-11T06:00:00Z"), now, evidenceVerified: true, priorSignals: 0 };
 const run = (e: Partial<Extraction>, c: Partial<typeof ctx> = {}) => score({ ...base, ...e }, { ...ctx, ...c }, S);
 
 describe("radar score", () => {
