@@ -15,7 +15,7 @@ CSR Radar reads the last 7 days of Indian CSR news **every morning** and ranks e
 | Map row | Where in the code |
 |---|---|
 | **Trigger**: daily 07:30 IST cron, Monday email, "Refresh now" | `vercel.json` (cron `0 2 * * *` UTC) → `src/app/api/cron/daily/route.ts`; `src/app/api/run/route.ts` runs in `after()`, and the UI polls `api/run/[id]` |
-| **Input**: live external data | `src/lib/sources.ts`: Google News RSS (≈15 queries built from settings), GDELT, Gemini + Google Search gap-fill. Every AI-found headline is checked against Google News and dropped if no real article matches |
+| **Input**: live external data | `src/lib/sources.ts`: Google News RSS (≈15 queries built from settings), Bing News RSS (plain-keyword queries from settings, publisher URLs), three CSR trade publications (India CSR, The CSR Journal, The CSR Universe), and Gemini + Google Search as gap-fill. Every AI-found headline is checked against Google News and dropped if no real article matches |
 | **Context**: Ananya's configuration | `src/lib/settings.ts` (schema + defaults), `src/lib/settings-store.ts` (Neon), `/settings` page |
 | **Processing**: clean, pre-filter, verify | `src/lib/text.ts` (canonical URLs, same-story clustering, 7-day window, quote verification); `prefilterReason` in `src/lib/pipeline.ts` |
 | **AI**: Gemini Flash only | `src/lib/extract.ts` (batched structured extraction, JSON schema, temp 0; point of contact), `src/lib/outreach.ts` (B2B email method), `summarise()` in `pipeline.ts` |
@@ -25,7 +25,7 @@ CSR Radar reads the last 7 days of Indian CSR news **every morning** and ranks e
 ## The pipeline (`src/lib/pipeline.ts`)
 
 ```
-1 COLLECT    Google News RSS · GDELT · Gemini web search, in parallel; each source can fail alone
+1 COLLECT    Google News · Bing News · CSR trade press · Gemini web search, in parallel; each can fail alone
 2 CLEAN      7-day window → canonical URL dedupe → stored (re-runs never re-read a story)
 3 PRE-FILTER free keyword check removes adverts and notices before any AI call (kept as Cold with the reason)
 4 READ       Gemini Flash, 10 stories per call, 4 calls in parallel, JSON schema, temperature 0
@@ -77,9 +77,11 @@ The contact is either the spokesperson named in the story, or the CSR head found
 ## Evidence that it works
 
 - **Live data**: the deployed site shows the current week's real stories, refreshed every morning.
-- **Unit tests**: `npm test` runs 24 tests covering scoring rules, the override, penalties, geography tiers, dedupe, window, URL canonicalisation, quote verification, the RSS parser, query building, the pre-filter, the invented-number guard and journey stages.
+- **Unit tests**: `npm test` runs 26 tests covering scoring rules, the override, penalties, geography tiers, dedupe, window, URL canonicalisation, quote verification, the Google News and Bing parsers, query building, the pre-filter, the invented-number guard and journey stages.
 - **Extraction eval**: `npm run eval` compares a fresh Gemini read with 36 real headlines labelled by hand. Results are in [`eval/results.md`](eval/results.md): **86% 4-class accuracy, opportunity recall 6/7**, up from 78% and 2/7 after one prompt iteration (both versions recorded).
 - **Run log**: the Runs page, for every run in production.
+- **CI**: GitHub Actions runs lint, type-check, tests and a production build on every push (`.github/workflows/ci.yml`).
+- **In-app explainer**: the *How it works* page shows the components map, the nine stages and live run numbers.
 
 ## Trade-offs we chose
 
@@ -90,7 +92,8 @@ The contact is either the spokesperson named in the story, or the CSR head found
 | Nothing is dropped | Her relationships can turn a Cold story Hot; a false negative is the costliest error | A longer Cold list (collapsed by default) |
 | Cheap pre-filter before Gemini | Saves cost and latency; logged per run | A keyword rule can be wrong, so filtered stories are still listed |
 | Batched extraction, cached per story | ~10× fewer calls; re-runs and daily refreshes only pay for new stories | One bad batch affects 10 stories (logged, retried next run) |
-| Source isolation | GDELT is rate-limited and flaky; one failing source never blocks the digest | Some runs have 2/3 sources (shown on Runs) |
+| Source isolation | One failing source never blocks the digest; a search-quota hit is marked *skipped* and retried next run | Some runs have fewer sources (shown on Runs) |
+| Dropped GDELT for Bing News | GDELT rate-limits shared serverless IPs (HTTP 429 on every Vercel run); Bing News RSS is keyless and reliable | Bing's RSS needs plain keyword queries, so it has its own query builder |
 | Snapshot via `next/og` instead of a headless browser | Fast and reliable on Vercel; a signed URL loads in Gmail | It is a rendered summary of the dashboard, not a pixel screenshot |
 | One shared password | Simple for a small team | No per-user audit trail |
 
@@ -102,7 +105,7 @@ npm install
 npm run db:migrate
 npm run pipeline             # one full run from the terminal (add -- --email to send)
 npm run dev                  # http://localhost:3000
-npm test                     # 24 unit tests
+npm test                     # 26 unit tests
 npm run eval                 # extraction accuracy vs labelled headlines
 ```
 

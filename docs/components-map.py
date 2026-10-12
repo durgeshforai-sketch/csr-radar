@@ -4,7 +4,7 @@ HDR=54; RH=118; TOP=70
 rows=[
  # actor, role, col, lines, band, fill, stroke
  ("Vercel Cron","Scheduler",0,["Runs every morning","07:30 IST (+ Refresh now)","Mondays → digest"],"#eaeefc","#dfe5ff","#5b6cf0"),
- ("Live news sources","Google News RSS · GDELT",1,["Fetches last 7 days of","CSR news (~15 searches","built from her settings)"],"#e8f4fb","#d6ebfa","#3b8fd6"),
+ ("Live news sources","Google · Bing · CSR press",1,["Fetches last 7 days of","CSR news (searches built","from her settings + feeds)"],"#e8f4fb","#d6ebfa","#3b8fd6"),
  ("Neon Postgres","Settings + memory",2,["Ananya's sectors, regions,","weights, NGO profile;","past stories per company"],"#fdf8e2","#fdf0bf","#d9a400"),
  ("Pipeline code","Next.js on Vercel",3,["Dedupe + 7-day window","Free pre-filter (adverts)","Nothing deleted → Cold"],"#eaf7ec","#d3f0d8","#2f9e52"),
  ("Gemini Flash","Reader",4,["Story → structured facts","signal · sector · ₹ · place","+ verbatim evidence quote"],"#fdeef4","#fbd9e7","#d6337a"),

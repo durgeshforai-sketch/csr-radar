@@ -62,7 +62,7 @@ export default async function RunPage({ params }: { params: Promise<{ id: string
                   {s.sources.map((x) => (
                     <tr key={x.source}>
                       <td><b>{x.source}</b>{x.error && <div className="tiny muted">{x.error}</div>}</td>
-                      <td>{x.ok ? <span className="chip ok">✓ ok</span> : <span className="chip warn">✕ failed</span>}</td>
+                      <td>{x.skipped ? <span className="chip">– skipped</span> : x.ok ? <span className="chip ok">✓ ok</span> : <span className="chip warn">✕ failed</span>}</td>
                       <td className="num">{x.items}</td>
                       <td className="num">{x.queries}</td>
                       <td className="num">{(x.ms / 1000).toFixed(1)}s</td>

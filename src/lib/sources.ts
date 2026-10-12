@@ -12,11 +12,11 @@ export type RawItem = {
   outlet: string | null;
   publishedAt: Date;
   snippet: string;
-  origin: "google_news" | "gdelt" | "gemini_search";
+  origin: "google_news" | "bing_news" | "trade_press" | "gdelt" | "gemini_search";
   query: string;
 };
 
-export type SourceResult = { source: string; ok: boolean; items: RawItem[]; queries: number; error?: string; ms: number };
+export type SourceResult = { source: string; ok: boolean; items: RawItem[]; queries: number; error?: string; ms: number; skipped?: boolean };
 
 const UA = "Mozilla/5.0 (compatible; CSRRadar/1.0; +https://vercel.app)";
 const xml = new XMLParser({ ignoreAttributes: false, attributeNamePrefix: "@" });
@@ -110,7 +110,87 @@ export async function googleNews(s: Settings): Promise<SourceResult> {
   };
 }
 
+
+// ---------- Bing News RSS (second independent news index; no key) ----------
+
+export function parseBingNews(body: string, query: string): RawItem[] {
+  const doc = xml.parse(body);
+  const raw = doc?.rss?.channel?.item;
+  const list = Array.isArray(raw) ? raw : raw ? [raw] : [];
+  return list
+    .map((it: Record<string, unknown>) => {
+      const link = String(it.link ?? "");
+      // Bing wraps the publisher URL in a click-tracking link: …&url=<encoded>&…
+      let url = link;
+      try {
+        url = new URL(link).searchParams.get("url") ?? link;
+      } catch {}
+      return {
+        url,
+        title: decodeEntities(String(it.title ?? "")),
+        outlet: it["News:Source"] ? decodeEntities(String(it["News:Source"])) : null,
+        publishedAt: new Date(String(it.pubDate ?? "")),
+        snippet: decodeEntities(String(it.description ?? "")).slice(0, 600),
+        origin: "bing_news" as const,
+        query,
+      };
+    })
+    .filter((x: RawItem) => x.url && x.title);
+}
+
+export function bingQueries(s: Settings): string[] {
+  const q: string[] = [];
+  for (const sec of s.sectors.filter((x) => x.enabled)) for (const kw of sec.keywords.slice(0, 2)) q.push(`CSR ${kw}`);
+  q.push("CSR NGO partner", "CSR proposals NGO", "CSR foundation grant", "CSR rules amendment");
+  for (const g of s.geographies.filter((x) => x.tier !== "national")) q.push(`CSR ${g.terms[0]}`);
+  return [...new Set(q)].slice(0, 14);
+}
+
+export async function bingNews(s: Settings): Promise<SourceResult> {
+  const t = Date.now();
+  // Bing's RSS only answers plain keyword queries (no OR / quotes) and has no date operator;
+  // the 7-day window is applied in the clean stage
+  const queries = bingQueries(s);
+  const res = await pool(queries, 4, async (q) =>
+    parseBingNews(await fetchText(`https://www.bing.com/news/search?q=${encodeURIComponent(`${q} India`)}&format=rss&setlang=en-IN`), q).slice(0, 25),
+  );
+  const items = res.flatMap((r) => (r.status === "fulfilled" ? r.value : []));
+  const failed = res.filter((r) => r.status === "rejected").length;
+  return { source: "Bing News", ok: failed < queries.length, items, queries: queries.length, error: failed ? `${failed}/${queries.length} queries failed` : undefined, ms: Date.now() - t };
+}
+
+// ---------- CSR trade press (sector publications that cover CSR budgets, annual reports, partnerships) ----------
+
+export const TRADE_FEEDS = [
+  { name: "India CSR", url: "https://indiacsr.in/feed/" },
+  { name: "The CSR Journal", url: "https://thecsrjournal.in/feed/" },
+  { name: "The CSR Universe", url: "https://thecsruniverse.com/feed" },
+];
+
+export async function tradePress(): Promise<SourceResult> {
+  const t = Date.now();
+  const res = await pool(TRADE_FEEDS, 3, async (f) => {
+    const doc = xml.parse(await fetchText(f.url));
+    const raw = doc?.rss?.channel?.item;
+    const list = Array.isArray(raw) ? raw : raw ? [raw] : [];
+    return list.map((it: Record<string, unknown>) => ({
+      url: String(it.link ?? ""),
+      title: decodeEntities(String(it.title ?? "")),
+      outlet: f.name,
+      publishedAt: new Date(String(it.pubDate ?? "")),
+      snippet: decodeEntities(String(it.description ?? "")).slice(0, 600),
+      origin: "trade_press" as const,
+      query: `${f.name} feed`,
+    })).filter((x: RawItem) => x.url && x.title);
+  });
+  const items = res.flatMap((r) => (r.status === "fulfilled" ? r.value : []));
+  const failed = res.filter((r) => r.status === "rejected").length;
+  return { source: "CSR trade press", ok: failed < TRADE_FEEDS.length, items, queries: TRADE_FEEDS.length, error: failed ? `${failed}/${TRADE_FEEDS.length} feeds failed` : undefined, ms: Date.now() - t };
+}
+
 // ---------- GDELT (global news index; real publisher URLs) ----------
+// Not in the default run: GDELT rate-limits shared serverless IPs (HTTP 429 from Vercel on every run).
+// Kept for local runs and as a documented trade-off; Bing News replaced it as the second index.
 
 export async function gdelt(s: Settings): Promise<SourceResult> {
   const t = Date.now();
@@ -189,7 +269,10 @@ Return ONLY a JSON array (max 12) of {"headline": exact news headline, "outlet":
       ms: Date.now() - t,
     };
   } catch (e) {
-    return { source: "Gemini web search", ok: false, items: [], queries: 1, error: String(e).slice(0, 200), ms: Date.now() - t };
+    const quota = /RESOURCE_EXHAUSTED|exceeded your current quota/i.test(String(e));
+    return quota
+      ? { source: "Gemini web search", ok: true, skipped: true, items: [], queries: 1, error: "Skipped: daily Google Search grounding quota reached (resets daily); the feeds still ran", ms: Date.now() - t }
+      : { source: "Gemini web search", ok: false, items: [], queries: 1, error: String(e).slice(0, 200), ms: Date.now() - t };
   }
 }
 

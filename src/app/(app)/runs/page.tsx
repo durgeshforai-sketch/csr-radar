@@ -39,7 +39,7 @@ export default async function Runs() {
                   <td><Link className="link" href={`/runs/${r.id}`}>{fmtDateTime(r.startedAt)}</Link></td>
                   <td><span className="chip">{r.trigger}</span></td>
                   <td>{r.status === "done" ? <span className="chip ok">✓ done</span> : r.status === "partial" ? <span className="chip" style={{ color: "var(--warm)" }}>◐ partial</span> : r.status === "running" ? <span className="chip pulse">running · {r.stage}</span> : <span className="chip warn">✕ failed</span>}</td>
-                  <td className="num">{s ? `${s.sources.filter((x) => x.ok).length}/${s.sources.length}` : "—"}</td>
+                  <td className="num">{s ? `${s.sources.filter((x) => x.ok && !x.skipped).length}/${s.sources.filter((x) => !x.skipped).length}` : "—"}</td>
                   <td className="num">{s ? `${s.collected} → ${s.extracted + s.cached}` : "—"}</td>
                   <td className="num">{s ? `${s.buckets.call} / ${s.buckets.watch} / ${s.buckets.fyi} / ${s.buckets.skip}` : "—"}</td>
                   <td className="num">{r.finishedAt ? `${Math.round((r.finishedAt.getTime() - r.startedAt.getTime()) / 1000)}s` : "—"}</td>

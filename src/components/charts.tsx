@@ -67,7 +67,6 @@ export function Heatmap({ rows, cols }: { rows: { label: string; cells: number[]
   const max = Math.max(1, ...rows.flatMap((r) => r.cells));
   const shade = (v: number) =>
     v === 0 ? "var(--brand-soft)" : `color-mix(in srgb, var(--brand) ${Math.round(28 + (v / max) * 72)}%, var(--brand-soft))`;
-  let i = 0;
   return (
     <div>
       <div className="heat">
@@ -75,11 +74,11 @@ export function Heatmap({ rows, cols }: { rows: { label: string; cells: number[]
           <span />
           {cols.map((c) => <span key={c} style={{ textAlign: "center" }}>{c}</span>)}
         </div>
-        {rows.map((r) => (
+        {rows.map((r, ri) => (
           <div className="heat-row" key={r.label}>
             <span title={r.label}>{r.label}</span>
             {r.cells.map((v, j) => (
-              <div key={j} className="heat-cell" data-n={v || undefined} title={`${r.label} · ${cols[j]}: ${v}`} style={{ background: shade(v), ["--i" as string]: i++ }} />
+              <div key={j} className="heat-cell" data-n={v || undefined} title={`${r.label} · ${cols[j]}: ${v}`} style={{ background: shade(v), ["--i" as string]: ri * cols.length + j }} />
             ))}
           </div>
         ))}
@@ -92,30 +91,26 @@ export function Heatmap({ rows, cols }: { rows: { label: string; cells: number[]
 export function Donut({ parts, total, label }: { parts: { b: Bucket; n: number }[]; total: number; label: string }) {
   const R = 70, C = 2 * Math.PI * R;
   const sum = Math.max(1, parts.reduce((a, p) => a + p.n, 0));
-  let offset = 0;
+  const shown = parts.filter((p) => p.n > 0);
+  const gap = shown.length > 1 ? 4 : 0;
+  const segs = shown.map((p, i) => ({ ...p, len: (p.n / sum) * C, start: shown.slice(0, i).reduce((a, x) => a + (x.n / sum) * C, 0) }));
   return (
     <div>
       <div className="donut">
         <svg viewBox="0 0 168 168" width="168" height="168">
           <circle cx="84" cy="84" r={R} stroke="var(--surface-2)" style={{ animation: "none" }} />
-          {parts.filter((p) => p.n > 0).map((p, i) => {
-            const len = (p.n / sum) * C;
-            const gap = parts.filter((x) => x.n > 0).length > 1 ? 4 : 0;
-            const el = (
-              <circle
-                key={p.b}
-                cx="84"
-                cy="84"
-                r={R}
-                stroke={TEMP[p.b].color}
-                strokeDasharray={`${Math.max(0, len - gap)} ${C}`}
-                strokeDashoffset={-offset}
-                style={{ strokeLinecap: "butt", animation: `fade 0.6s both ${0.15 * i}s` }}
-              />
-            );
-            offset += len;
-            return el;
-          })}
+          {segs.map((p, i) => (
+            <circle
+              key={p.b}
+              cx="84"
+              cy="84"
+              r={R}
+              stroke={TEMP[p.b].color}
+              strokeDasharray={`${Math.max(0, p.len - gap)} ${C}`}
+              strokeDashoffset={-p.start}
+              style={{ strokeLinecap: "butt", animation: `fade 0.6s both ${0.15 * i}s` }}
+            />
+          ))}
         </svg>
         <div className="c"><b>{total}</b><span>{label}</span></div>
       </div>

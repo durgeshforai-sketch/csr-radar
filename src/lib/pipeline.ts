@@ -3,7 +3,7 @@ import { ThinkingLevel } from "@google/genai";
 import { getDb, schema } from "@/db";
 import { loadSettings } from "./settings-store";
 import type { Settings } from "./settings";
-import { gdelt, geminiSearch, googleNews, urlKeyOf, type RawItem, type SourceResult } from "./sources";
+import { bingNews, geminiSearch, googleNews, tradePress, urlKeyOf, type RawItem, type SourceResult } from "./sources";
 import { cluster, companyKey, quoteFound, similarity, SAME_STORY, titleKey, withinWindow } from "./text";
 import { extractBatch, findPoc, sourceText, type Extraction } from "./extract";
 import { draftOutreach } from "./outreach";
@@ -19,7 +19,7 @@ import { sendDigest } from "./email";
 //  → 7 enrich calls (point of contact + pitch) → 8 summarise → 9 deliver (Monday email)
 
 export type RunStats = {
-  sources: { source: string; ok: boolean; items: number; queries: number; ms: number; error?: string }[];
+  sources: { source: string; ok: boolean; items: number; queries: number; ms: number; error?: string; skipped?: boolean }[];
   collected: number;
   inWindow: number;
   unique: number;
@@ -99,11 +99,11 @@ export async function runPipeline(opts: { trigger: "daily" | "weekly" | "manual"
   };
 
   try {
-    // 1 COLLECT — three live sources in parallel
+    // 1 COLLECT — four live sources in parallel
     await stage("collect");
-    const results: SourceResult[] = await Promise.all([googleNews(s), gdelt(s), geminiSearch(s, now, usage)]);
+    const results: SourceResult[] = await Promise.all([googleNews(s), bingNews(s), tradePress(), geminiSearch(s, now, usage)]);
     for (const r of results) {
-      stats.sources.push({ source: r.source, ok: r.ok, items: r.items.length, queries: r.queries, ms: r.ms, error: r.error });
+      stats.sources.push({ source: r.source, ok: r.ok, items: r.items.length, queries: r.queries, ms: r.ms, error: r.error, skipped: r.skipped });
       if (!r.ok) errors.push({ stage: "collect", message: `${r.source}: ${r.error}` });
     }
     const raw = results.flatMap((r) => r.items);
@@ -184,7 +184,8 @@ export async function runPipeline(opts: { trigger: "daily" | "weekly" | "manual"
                   return null;
                 }
                 const verified = quoteFound(e.evidence, sourceText(a));
-                verified ? stats.verified++ : stats.unverified++;
+                if (verified) stats.verified++;
+                else stats.unverified++;
                 stats.extracted++;
                 return db
                   .update(schema.articles)
@@ -282,7 +283,8 @@ export async function runPipeline(opts: { trigger: "daily" | "weekly" | "manual"
     // 7 ENRICH — point of contact + pitch for this week's calls (cached per story)
     await stage("enrich");
     const callIds = rows.filter((r) => r.bucket === "call").map((r) => r.articleId);
-    const toEnrich = readable.filter((a) => callIds.includes(a.id) && !a.poc).slice(0, MAX_ENRICH_PER_RUN);
+    // Retry contacts that failed only because web search was unavailable
+    const toEnrich = readable.filter((a) => callIds.includes(a.id) && (!a.poc || a.poc.retry)).slice(0, MAX_ENRICH_PER_RUN);
     await Promise.all(
       toEnrich.map(async (a) => {
         try {

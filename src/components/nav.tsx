@@ -1,7 +1,7 @@
 "use client";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { IBoard, IBuilding, IRuns, ISettings, IWeek } from "./icons";
+import { IBoard, IBuilding, IRuns, ISettings, IWeek, IRadar } from "./icons";
 
 const ITEMS = [
   { href: "/", label: "This week", Icon: IWeek },
@@ -9,6 +9,7 @@ const ITEMS = [
   { href: "/companies", label: "Companies", Icon: IBuilding },
   { href: "/runs", label: "Runs", long: "& reliability", Icon: IRuns },
   { href: "/settings", label: "Settings", Icon: ISettings },
+  { href: "/how", label: "How it works", Icon: IRadar },
 ];
 
 export function Nav({ hot }: { hot: number }) {

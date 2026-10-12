@@ -13,7 +13,6 @@ export function CountUp({ to, prefix = "", suffix = "", decimals = 0, ms = 1100 
       setV(to * (1 - Math.pow(1 - p, 3)));
       if (p < 1) raf = requestAnimationFrame(tick);
     };
-    setV(0);
     raf = requestAnimationFrame(tick);
     return () => cancelAnimationFrame(raf);
   }, [to, ms]);

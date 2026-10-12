@@ -13,6 +13,12 @@ import { CountUp } from "@/components/count-up";
 
 type SP = { sector?: string; region?: string };
 
+// Greeting by Ananya's local time (IST)
+function greeting() {
+  const h = new Date(Date.now() + 5.5 * 3600_000).getUTCHours();
+  return h < 12 ? "Good morning" : h < 17 ? "Good afternoon" : "Good evening";
+}
+
 export default async function ThisWeek({ searchParams }: { searchParams: Promise<SP> }) {
   await connection();
   const sp = await searchParams;
@@ -51,9 +57,9 @@ export default async function ThisWeek({ searchParams }: { searchParams: Promise
   const committed = [...all.filter((r) => r.signal.bucket === "call" || r.signal.bucket === "watch")].reduce((a, r) => a + (r.article.extraction?.amountInrCrore ?? 0), 0);
   const partnerSearches = read.filter((r) => r.article.extraction?.partnerSearchExplicit).length;
   const stats = run.stats!;
-  const sourcesOk = stats.sources.filter((s) => s.ok).length;
+  const ran = stats.sources.filter((s) => !s.skipped);
+  const sourcesOk = ran.filter((s) => s.ok).length;
 
-  const sectorCounts = settings.sectors.map((s) => ({ label: s.label, n: live.filter((r) => r.article.extraction?.sectors.includes(s.key)).length }));
   const regionCounts = (["home", "priority", "national", "other", "unknown"] as const).map((t) => ({
     label: { home: "Pune & PCMC", priority: "Maharashtra", national: "Pan-India", other: "Other states", unknown: "Not stated" }[t],
     n: live.filter((r) => r.signal.breakdown.geoTier === t).length,
@@ -69,8 +75,7 @@ export default async function ThisWeek({ searchParams }: { searchParams: Promise
     label: sec.label,
     cells: DOW.map((_, j) => live.filter((r) => r.article.extraction?.sectors.includes(sec.key) && dow(r.article.publishedAt) === j).length),
   }));
-  const hourIst = new Date(Date.now() + 5.5 * 3600_000).getUTCHours();
-  const greet = hourIst < 12 ? "Good morning" : hourIst < 17 ? "Good afternoon" : "Good evening";
+  const greet = greeting();
   const inSector = live.filter((r) => r.article.extraction?.sectors.length).length;
   const initiatives = read.filter((r) => r.article.extraction?.signalType === "new_initiative").length;
   const stripes = (n: number, of: number, cap = 22) => Array.from({ length: cap }, (_, k) => k < Math.round((n / Math.max(1, of)) * cap));
@@ -121,7 +126,7 @@ export default async function ThisWeek({ searchParams }: { searchParams: Promise
         </div>
         <div className="hero-foot">
           <span>{fmtDate(run.windowStart, { day: "numeric", month: "short" })}</span>
-          <span>Updated {ago(run.finishedAt)} · {stats.collected} stories scanned from {sourcesOk}/{stats.sources.length} live sources</span>
+          <span>Updated {ago(run.finishedAt)} · {stats.collected} stories scanned from {sourcesOk}/{ran.length} live sources</span>
           <span>{fmtDate(run.windowEnd, { day: "numeric", month: "short" })}</span>
         </div>
       </section>

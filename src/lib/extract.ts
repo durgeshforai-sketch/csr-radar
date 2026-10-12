@@ -60,6 +60,7 @@ export type Poc = {
   linkedinSearch: string;
   csrPageSearch: string;
   note: string;
+  retry?: boolean; // web search was unavailable; try again next run
 };
 
 const SYSTEM = (s: Settings) => `You read Indian news stories for the partnerships head of a ${s.organisation.city}-based education and skilling NGO.
@@ -150,8 +151,9 @@ Reply ONLY as JSON {"name": string|null, "role": string|null, "url": the page th
     if (j.name && (j.url || groundedUrl)) {
       return { ...base, name: j.name, role: j.role, source: "web_search", sourceUrl: j.url ?? groundedUrl, note: "Found by web search — verify before outreach" };
     }
-  } catch {
-    // fall through to the search links
+  } catch (err) {
+    if (/RESOURCE_EXHAUSTED|exceeded your current quota|UNAVAILABLE|fetch failed/i.test(String(err)))
+      return { ...base, name: null, role: null, source: "none", sourceUrl: null, note: "Web search unavailable right now — will retry on the next run. Use the LinkedIn search meanwhile.", retry: true };
   }
   return { ...base, name: null, role: null, source: "none", sourceUrl: null, note: "No named contact found — use the LinkedIn search" };
 }

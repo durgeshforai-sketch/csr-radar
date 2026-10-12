@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { canonicalUrl, cluster, companyKey, quoteFound, similarity, splitOutlet, withinWindow } from "@/lib/text";
-import { parseGoogleNews, buildQueries } from "@/lib/sources";
+import { parseGoogleNews, parseBingNews, buildQueries, bingQueries } from "@/lib/sources";
 import { prefilterReason } from "@/lib/pipeline";
 import { inventedNumbers, journeyStage } from "@/lib/outreach";
 import { DEFAULT_SETTINGS as S } from "@/lib/settings";
@@ -49,6 +49,16 @@ describe("sources", () => {
     expect(it.title).toBe("Zeta opens centre");
     expect(it.outlet).toBe("The Hindu");
     expect(it.publishedAt.toISOString()).toBe("2026-10-09T08:00:00.000Z");
+  });
+  it("parses Bing News RSS and unwraps the publisher URL from the click-tracking link", () => {
+    const xml = `<rss><channel><item><title>AM/NS India empowers Odisha youth</title><link>http://www.bing.com/news/apiclick.aspx?ref=FexRss&amp;url=https%3a%2f%2forissadiary.com%2fam-ns%2f&amp;mkt=en-in</link><description>Digital Skill Centres</description><pubDate>Mon, 12 Oct 2026 04:19:00 GMT</pubDate><News:Source>Odisha Diary</News:Source></item></channel></rss>`;
+    const [it] = parseBingNews(xml, "q");
+    expect(it.url).toBe("https://orissadiary.com/am-ns/");
+    expect(it.outlet).toBe("Odisha Diary");
+    expect(it.origin).toBe("bing_news");
+  });
+  it("Bing queries are plain keywords (its RSS ignores OR and quotes)", () => {
+    expect(bingQueries(S).every((q) => !/[()"]|\bOR\b/.test(q))).toBe(true);
   });
   it("builds searches from settings, so a new sector is searched next run", () => {
     const s = { ...S, sectors: [...S.sectors, { key: "women", label: "Women", keywords: ["women", "self-help group"], enabled: true }] };

@@ -5,7 +5,7 @@ import { IPlay } from "./icons";
 
 const STAGES = ["collect", "clean", "read", "score", "enrich", "summarise", "deliver"];
 const LABEL: Record<string, string> = {
-  collect: "Searching 3 live sources",
+  collect: "Searching 4 live sources",
   clean: "Removing duplicates",
   read: "Gemini is reading stories",
   score: "Scoring against your settings",
