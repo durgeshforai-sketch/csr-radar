@@ -11,7 +11,7 @@ import { IDownload, IScale, ISnow, IDrop, IFlame, ISun, IClock, IMail, IUser, IN
 import { Donut, Heatmap, TrendChart } from "@/components/charts";
 import { CountUp } from "@/components/count-up";
 
-type SP = { sector?: string; region?: string };
+type SP = { sector?: string; region?: string; cold?: string };
 
 // Greeting by Ananya's local time (IST)
 function greeting() {
@@ -55,7 +55,9 @@ export default async function ThisWeek({ searchParams }: { searchParams: Promise
 
   const live = read.filter((r) => r.signal.bucket !== "skip");
   const committed = [...all.filter((r) => r.signal.bucket === "call" || r.signal.bucket === "watch")].reduce((a, r) => a + (r.article.extraction?.amountInrCrore ?? 0), 0);
-  const partnerSearches = read.filter((r) => r.article.extraction?.partnerSearchExplicit).length;
+  const partnerSearches = read.filter((r) => r.article.extraction?.partnerSearchExplicit || r.article.origin === "open_call").length;
+  const COLD_LIMIT = 25;
+  const showAllCold = sp.cold === "all";
   const stats = run.stats!;
   const ran = stats.sources.filter((s) => !s.skipped);
   const sourcesOk = ran.filter((s) => s.ok).length;
@@ -203,7 +205,7 @@ export default async function ThisWeek({ searchParams }: { searchParams: Promise
       <section className="section">
         <div className="section-head">
           <h2 className="h2"><span className="ico tint-hot"><IFlame /></span>Worth a call this week</h2>
-          <span className="muted small">Score ≥ {settings.thresholds.call}, or an explicit partner search · {hot.length} {hot.length === 1 ? "company" : "companies"}</span>
+          <span className="muted small">Score ≥ {settings.thresholds.call}, open calls for NGOs and explicit partner searches · {hot.length} {hot.length === 1 ? "company" : "companies"}</span>
         </div>
         {hot.length ? (
           <div className="opps">{hot.map((r, i) => <OppCard key={r.signal.id} row={r} i={i} company={crm.get(r.article.companyKey ?? "")} />)}</div>
@@ -228,12 +230,12 @@ export default async function ThisWeek({ searchParams }: { searchParams: Promise
         <div className="card pad-lg">
           <div className="section-head" style={{ marginBottom: 8 }}>
             <h2 className="h2"><span className="ico tint-policy"><IScale /></span>Policy watch</h2>
-            <span className="muted small">MCA · SEBI · Companies Act</span>
+            <span className="muted small">This month · MCA · SEBI · Companies Act</span>
           </div>
           {policy.length ? (
             <div className="list" style={{ margin: "0 -18px" }}>{policy.map((r) => <StoryRow key={r.signal.id} row={r} />)}</div>
           ) : (
-            <p className="muted small">No changes to CSR rules found this week. We searched for Schedule VII, CSR rules, unspent-fund and Companies Act amendments.</p>
+            <p className="muted small">No changes to CSR rules found in the last 30 days. We searched for Schedule VII, CSR rules, MCA notifications, unspent-fund and Companies Act amendments.</p>
           )}
         </div>
         <div className="card pad-lg stack" style={{ gap: 18 }}>
@@ -252,7 +254,7 @@ export default async function ThisWeek({ searchParams }: { searchParams: Promise
       </section>
 
       <section className="section">
-        <details className="cold card">
+        <details className="cold card" id="cold" open={showAllCold || undefined}>
           <summary className="pad row between">
             <span className="row" style={{ gap: 10 }}>
               <span className="chev">▸</span>
@@ -261,8 +263,17 @@ export default async function ThisWeek({ searchParams }: { searchParams: Promise
             <span className="muted small">{cold.length} stories, ranked · nothing is hidden: you may know someone there</span>
           </summary>
           <div className="list" style={{ borderTop: "1px solid var(--line)" }}>
-            {cold.map((r) => <StoryRow key={r.signal.id} row={r} reason />)}
+            {(showAllCold ? cold : cold.slice(0, COLD_LIMIT)).map((r) => <StoryRow key={r.signal.id} row={r} reason />)}
           </div>
+          {cold.length > COLD_LIMIT && (
+            <div className="pad" style={{ borderTop: "1px solid var(--line)", textAlign: "center" }}>
+              {showAllCold ? (
+                <Link className="btn sm" href={q("cold")}>Show top {COLD_LIMIT} only</Link>
+              ) : (
+                <Link className="btn sm" href={`${q("cold", "all")}#cold`}>Show all {cold.length} Cold stories</Link>
+              )}
+            </div>
+          )}
         </details>
       </section>
 

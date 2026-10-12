@@ -9,7 +9,7 @@ import { CountUp } from "@/components/count-up";
 import { IExt, INews, IRuns, ICheck, IScale } from "@/components/icons";
 
 const STEPS: [string, string, string][] = [
-  ["1 · Collect", "Google News RSS (~15 searches from your settings), Bing News, three CSR trade publications, and Gemini web search as gap-fill — in parallel; each can fail alone.", "code"],
+  ["1 · Collect", "Google News (~15 searches from your settings), Bing News, three CSR trade publications, open calls for NGO partners (RFPs/EOIs, page verified) and Gemini web search — in parallel; each can fail alone. News: 7 days; policy and open calls: 30 days.", "code"],
   ["2 · Clean", "7-day window, canonical URLs, duplicate removal; every story stored once so re-runs never pay twice.", "code"],
   ["3 · Pre-filter", "A free keyword check removes adverts and notices before any AI call. Filtered stories stay listed as Cold, with the reason.", "code"],
   ["4 · Read", "Gemini Flash turns 10 stories per call into structured facts: signal, company, sectors, places, ₹, deadline, partner search, audience fit — plus a verbatim quote.", "ai"],
@@ -69,6 +69,7 @@ export default async function How() {
           <div className="card pad-lg stack">
             <h2 className="h2">Why you can trust it</h2>
             <ul className="small ink2" style={{ margin: 0, paddingLeft: 18, display: "grid", gap: 6 }}>
+              <li><b>Open calls are verified.</b> An RFP or EOI found by search is kept only if its page loads and names the organisation, and only while its deadline is open.</li>
               <li><b>AI never decides.</b> It extracts facts with a quote; code scores; you choose.</li>
               <li><b>Quotes are checked</b> against the source text; AI-found headlines must match a real Google News article.</li>
               <li><b>Nothing is dropped.</b> Off-sector and filtered stories stay in Cold — you may know someone there.</li>
@@ -80,7 +81,7 @@ export default async function How() {
           <div className="card pad-lg stack">
             <h2 className="h2">Evidence</h2>
             <ul className="small ink2" style={{ margin: 0, paddingLeft: 18, display: "grid", gap: 6 }}>
-              <li><b>26 unit tests</b> (scoring rules, override, penalties, geography, dedupe, window, parsers, guards) — run on every push by GitHub Actions.</li>
+              <li><b>28 unit tests</b> (scoring rules, override, penalties, geography, dedupe, window, parsers, guards) — run on every push by GitHub Actions.</li>
               <li><b>Extraction eval:</b> 36 real headlines labelled by hand → <b>89% accuracy, opportunity recall 6/7, precision 6/6</b> (v1 prompt: 78%, 2/7). <a className="link" href="https://github.com/durgeshforai-sketch/csr-radar/blob/main/eval/results.md" target="_blank" rel="noreferrer">Results</a></li>
               <li><b>Configurable:</b> {s.sectors.filter((x) => x.enabled).length} sectors, {s.geographies.length} geographic tiers, {Object.keys(s.weights).length} weights — edit in <Link className="link" href="/settings">Settings</Link>.</li>
             </ul>

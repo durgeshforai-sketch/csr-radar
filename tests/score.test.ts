@@ -63,6 +63,13 @@ describe("radar score", () => {
     expect(r.score).toBeLessThanOrEqual(15);
   });
 
+  it("an open call for NGO partners is always Hot, even off-sector or far away, and shows its deadline", () => {
+    const r = run({ signalType: "partner_search", sectors: [], places: ["Assam"], audienceMatch: false, deadline: "2026-10-23" }, { openCall: true, publishedAt: new Date("2026-09-20T00:00:00Z") });
+    expect(r.bucket).toBe("call");
+    expect(r.score).toBeGreaterThanOrEqual(S.thresholds.call);
+    expect(r.breakdown.rule).toMatch(/Open call.*2026-10-23/);
+  });
+
   it("policy changes always go to Policy watch", () => {
     expect(run({ signalType: "policy_change", sectors: [] }).bucket).toBe("policy");
   });

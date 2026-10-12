@@ -11,7 +11,7 @@ export type RawItem = {
   outlet: string | null;
   publishedAt: Date;
   snippet: string;
-  origin: "google_news" | "bing_news" | "trade_press" | "gdelt" | "gemini_search";
+  origin: "google_news" | "policy_news" | "bing_news" | "trade_press" | "open_call" | "gdelt" | "gemini_search";
   query: string;
 };
 
@@ -60,12 +60,20 @@ export function buildQueries(s: Settings): string[] {
   q.push(`CSR ("request for proposal" OR "call for proposals" OR "expression of interest") NGO`);
   q.push(`CSR foundation ("crore" OR "allocates" OR "spend") (education OR skilling OR youth)`);
   q.push(`CSR ("annual report" OR "CSR spend" OR "CSR budget") (education OR skill)`);
-  q.push(`("CSR rules" OR "Schedule VII" OR "CSR amendment" OR "CSR norms" OR "CSR policy") (MCA OR government OR SEBI)`);
-  q.push(`"Companies Act" CSR (amendment OR circular OR notification OR "unspent")`);
   for (const g of s.geographies.filter((x) => x.tier !== "national")) {
     q.push(`CSR ${or(g.terms.slice(0, 3))} (school OR skill OR youth OR students OR training)`);
   }
   return q;
+}
+
+// Rule changes stay relevant for weeks, so policy searches look back 30 days (shown as "this month")
+export const POLICY_LOOKBACK_DAYS = 30;
+export function policyQueries(): string[] {
+  return [
+    `("CSR rules" OR "Schedule VII" OR "CSR amendment" OR "CSR norms" OR "CSR policy") (MCA OR government OR SEBI)`,
+    `"Companies Act" CSR (amendment OR circular OR notification OR "unspent")`,
+    `CSR (MCA OR "corporate affairs") (rules OR notification OR circular OR guidelines)`,
+  ];
 }
 
 export function parseGoogleNews(body: string, query: string): RawItem[] {
@@ -95,20 +103,26 @@ const gnUrl = (q: string, days: number) =>
 
 export async function googleNews(s: Settings): Promise<SourceResult> {
   const t = Date.now();
-  const queries = buildQueries(s);
-  const res = await pool(queries, 5, async (q) => parseGoogleNews(await fetchText(gnUrl(q, s.windowDays)), q).slice(0, 25));
+  const jobs = [
+    ...buildQueries(s).map((q) => ({ q, days: s.windowDays, origin: "google_news" as const })),
+    ...policyQueries().map((q) => ({ q, days: POLICY_LOOKBACK_DAYS, origin: "policy_news" as const })),
+  ];
+  const res = await pool(jobs, 5, async (j) =>
+    parseGoogleNews(await fetchText(gnUrl(j.q, j.days)), j.q)
+      .slice(0, 25)
+      .map((it) => ({ ...it, origin: j.origin })),
+  );
   const items = res.flatMap((r) => (r.status === "fulfilled" ? r.value : []));
   const failed = res.filter((r) => r.status === "rejected").length;
   return {
     source: "Google News",
-    ok: failed < queries.length,
+    ok: failed < jobs.length,
     items,
-    queries: queries.length,
-    error: failed ? `${failed}/${queries.length} queries failed` : undefined,
+    queries: jobs.length,
+    error: failed ? `${failed}/${jobs.length} queries failed` : undefined,
     ms: Date.now() - t,
   };
 }
-
 
 // ---------- Bing News RSS (second independent news index; no key) ----------
 
@@ -266,6 +280,70 @@ Return ONLY a JSON array (max 12) of {"headline": exact news headline, "outlet":
     return quota
       ? { source: "Gemini web search", ok: true, skipped: true, items: [], queries: 1, error: "Skipped: search quota or credits reached; the feeds still ran", ms: Date.now() - t }
       : { source: "Gemini web search", ok: false, items: [], queries: 1, error: String(e).slice(0, 200), ms: Date.now() - t };
+  }
+}
+
+// ---------- Open calls for NGO partners (RFPs / EOIs) ----------
+// Companies publish RFPs on their own sites and CSR portals, not in the news. Gemini + Google Search looks for
+// open calls in her sectors (last 30 days, deadline still open). Its answer is not trusted: each call is kept only
+// if the cited page loads and names the organisation. Open calls are always Hot (score.ts).
+
+export const OPEN_CALL_LOOKBACK_DAYS = 30;
+type FoundCall = { title: string; organisation: string; deadline: string | null; published: string | null; url: string; summary: string };
+
+export async function verifyCallPage(c: FoundCall): Promise<string | null> {
+  try {
+    const u = new URL(c.url);
+    if (!/^https?:$/.test(u.protocol)) return null;
+    const res = await fetch(u, { headers: { "user-agent": UA }, signal: AbortSignal.timeout(10_000), redirect: "follow", cache: "no-store" });
+    if (!res.ok) return null;
+    const text = decodeEntities((await res.text()).slice(0, 400_000)).toLowerCase();
+    const org = c.organisation.toLowerCase().replace(/\b(foundation|limited|ltd|trust|india|pvt|private)\b/g, " ").split(/\s+/).filter((w) => w.length > 2);
+    const named = org.length ? org.filter((w) => text.includes(w)).length / org.length >= 0.6 : false;
+    return named ? text.slice(0, 50_000) : null;
+  } catch {
+    return null;
+  }
+}
+
+export async function openCalls(s: Settings, now: Date, usage: Usage): Promise<SourceResult> {
+  const t = Date.now();
+  const today = now.toISOString().slice(0, 10);
+  const sectors = s.sectors.filter((x) => x.enabled).map((x) => x.label.toLowerCase()).join(", ");
+  const prompt = `Today is ${today}. Search the web for OPEN calls where Indian companies or corporate CSR foundations invite NGOs to apply: CSR RFPs, EOIs, calls for proposals, grant applications, implementation-partner searches.
+Sectors: ${sectors}. Priority regions: ${s.geographies.filter((g) => g.tier !== "national").map((g) => g.label).join(", ")}, then pan-India.
+Only calls published in the last ${OPEN_CALL_LOOKBACK_DAYS} days whose deadline is ${today} or later (or not stated). Include government CSR portals such as csrxchange.gov.in.
+Reply ONLY as a JSON array (max 10) of {"title": string, "organisation": string, "deadline": "YYYY-MM-DD"|null, "published": "YYYY-MM-DD"|null, "url": the exact page URL, "summary": one sentence with amount, sectors and geography if stated}.`;
+  try {
+    const res = await chat({ user: prompt, webSearch: true, temperature: 0, effort: "low" }, usage);
+    const found = parseLooseJson<FoundCall[]>(res.text, "[").filter((c) => c?.url && c?.organisation && c?.title);
+    const open = found.filter((c) => !c.deadline || c.deadline >= today);
+    const checked = await pool(open.slice(0, 10), 4, async (c) => ((await verifyCallPage(c)) ? c : null));
+    const kept = checked.flatMap((r) => (r.status === "fulfilled" && r.value ? [r.value] : []));
+    const items: RawItem[] = kept.map((c) => {
+      const pub = c.published ? new Date(`${c.published}T00:00:00+05:30`) : now;
+      return {
+        url: c.url,
+        title: `${c.organisation}: ${c.title}`,
+        outlet: new URL(c.url).hostname.replace(/^www\./, ""),
+        publishedAt: Number.isFinite(pub.getTime()) && pub <= now ? pub : now,
+        snippet: `${c.organisation} invites proposals from NGOs. ${c.summary}${c.deadline ? ` Deadline: ${c.deadline}.` : ""}`,
+        origin: "open_call",
+        query: "Open calls for NGO partners (Gemini + Google Search, page verified)",
+      };
+    });
+    const dropped = found.length - items.length;
+    return {
+      source: "Open calls (RFP/EOI)",
+      ok: true,
+      items,
+      queries: 1 + open.length,
+      error: dropped ? `${dropped}/${found.length} dropped (deadline passed, page missing, or page doesn't name the organisation)` : undefined,
+      ms: Date.now() - t,
+    };
+  } catch (e) {
+    const quota = /OpenRouter (429|402)/i.test(String(e));
+    return { source: "Open calls (RFP/EOI)", ok: quota, skipped: quota, items: [], queries: 1, error: String(e).slice(0, 200), ms: Date.now() - t };
   }
 }
 

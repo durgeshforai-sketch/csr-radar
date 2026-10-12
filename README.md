@@ -15,7 +15,7 @@ CSR Radar reads the last 7 days of Indian CSR news **every morning** and ranks e
 | Map row | Where in the code |
 |---|---|
 | **Trigger**: daily 07:30 IST cron, Monday email, "Refresh now" | `vercel.json` (cron `0 2 * * *` UTC) → `src/app/api/cron/daily/route.ts`; `src/app/api/run/route.ts` runs in `after()`, and the UI polls `api/run/[id]` |
-| **Input**: live external data | `src/lib/sources.ts`: Google News RSS (≈15 queries built from settings), Bing News RSS (plain-keyword queries from settings, publisher URLs), three CSR trade publications (India CSR, The CSR Journal, The CSR Universe), and Gemini + Google Search as gap-fill. Every AI-found headline is checked against Google News and dropped if no real article matches |
+| **Input**: live external data | `src/lib/sources.ts`: Google News RSS (≈15 queries built from settings), Bing News RSS (plain-keyword queries from settings, publisher URLs), three CSR trade publications (India CSR, The CSR Journal, The CSR Universe), **Open calls for NGO partners** (Gemini + Google Search for open CSR RFPs/EOIs, last 30 days, deadline still open, kept only if the page loads and names the organisation), and Gemini + Google Search as gap-fill (every AI-found headline must match a real Google News article). Policy searches look back 30 days |
 | **Context**: Ananya's configuration | `src/lib/settings.ts` (schema + defaults), `src/lib/settings-store.ts` (Neon), `/settings` page |
 | **Processing**: clean, pre-filter, verify | `src/lib/text.ts` (canonical URLs, same-story clustering, 7-day window, quote verification); `prefilterReason` in `src/lib/pipeline.ts` |
 | **AI**: Gemini Flash only | `src/lib/gemini.ts` (OpenRouter client: Google-only provider routing, structured outputs, native Google Search grounding, retries, cost), `src/lib/extract.ts` (batched structured extraction, JSON schema, temp 0; point of contact), `src/lib/outreach.ts` (B2B email method), `summarise()` in `pipeline.ts` |
@@ -25,7 +25,8 @@ CSR Radar reads the last 7 days of Indian CSR news **every morning** and ranks e
 ## The pipeline (`src/lib/pipeline.ts`)
 
 ```
-1 COLLECT    Google News · Bing News · CSR trade press · Gemini web search, in parallel; each can fail alone
+1 COLLECT    Google News · Bing News · CSR trade press · Open calls (RFP/EOI) · Gemini web search, in parallel; each can fail alone
+             (news: last 7 days · policy searches and open calls: last 30 days)
 2 CLEAN      7-day window → canonical URL dedupe → stored (re-runs never re-read a story)
 3 PRE-FILTER free keyword check removes adverts and notices before any AI call (kept as Cold with the reason)
 4 READ       Gemini Flash, 10 stories per call, 4 calls in parallel, JSON schema, temperature 0
@@ -52,7 +53,7 @@ Every stage writes its counts to `runs.stats`. The **Runs** page shows the funne
 | Project already completed / quote not verified / headline only | −12 / −10 / −5 |
 
 **Hot** ≥ 62 · **Warm** ≥ 42 · **Cool**: in her sectors, below 42 · **Cold**: off-sector or not corporate CSR, still listed · **Policy**: always shown.
-**Override:** a verified, explicit search for NGO partners in her sectors is always Hot. That is the exact moment she missed last year.
+**Overrides:** an open call for NGO partners (RFP/EOI with an open deadline, page verified) is always Hot and shows a countdown; a verified, explicit search for NGO partners in her sectors is always Hot. That is the exact moment she missed last year. Policy changes from the last 30 days go to Policy watch.
 All weights and thresholds are editable in Settings.
 
 ## Outreach drafts (`src/lib/outreach.ts`)
@@ -77,7 +78,7 @@ The contact is either the spokesperson named in the story, or the CSR head found
 ## Evidence that it works
 
 - **Live data**: the deployed site shows the current week's real stories, refreshed every morning.
-- **Unit tests**: `npm test` runs 26 tests covering scoring rules, the override, penalties, geography tiers, dedupe, window, URL canonicalisation, quote verification, the Google News and Bing parsers, query building, the pre-filter, the invented-number guard and journey stages.
+- **Unit tests**: `npm test` runs 28 tests covering scoring rules, the override, penalties, geography tiers, dedupe, window, URL canonicalisation, quote verification, the Google News and Bing parsers, query building, the pre-filter, the invented-number guard and journey stages.
 - **Extraction eval**: `npm run eval` compares a fresh Gemini read with 36 real headlines labelled by hand. Results are in [`eval/results.md`](eval/results.md): **89% 4-class accuracy, opportunity recall 6/7, precision 6/6** on `google/gemini-3.7-flash`, up from 78% and 2/7 for the first prompt (all three versions recorded).
 - **Run log**: the Runs page, for every run in production.
 - **CI**: GitHub Actions runs lint, type-check, tests and a production build on every push (`.github/workflows/ci.yml`).
@@ -105,7 +106,7 @@ npm install
 npm run db:migrate
 npm run pipeline             # one full run from the terminal (add -- --email to send)
 npm run dev                  # http://localhost:3000
-npm test                     # 26 unit tests
+npm test                     # 28 unit tests
 npm run eval                 # extraction accuracy vs labelled headlines
 ```
 

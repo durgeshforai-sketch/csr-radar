@@ -20,7 +20,7 @@ export function geoTier(e: Pick<Extraction, "places" | "panIndia">, s: Settings)
 
 export function score(
   e: Extraction,
-  ctx: { publishedAt: Date; now: Date; evidenceVerified: boolean; priorSignals: number },
+  ctx: { publishedAt: Date; now: Date; evidenceVerified: boolean; priorSignals: number; openCall?: boolean },
   s: Settings,
 ): { score: number; bucket: Bucket; breakdown: ScoreBreakdown } {
   const w = s.weights;
@@ -29,6 +29,17 @@ export function score(
   const enabled = new Set(s.sectors.filter((x) => x.enabled).map((x) => x.key));
   const sectorHit = e.sectors.some((k) => enabled.has(k));
 
+  // An open call for NGO partners (RFP / EOI, deadline not passed, page verified) is always Hot:
+  // it is the exact moment she missed last year.
+  if (ctx.openCall && e.signalType !== "not_relevant") {
+    const lines: ScoreLine[] = [
+      { label: "Open call for NGO partners", points: w.partner_search },
+      ...(sectorHit ? [{ label: "In her sectors", points: w.sectorFit }] : []),
+      ...(e.amountInrCrore != null ? [{ label: e.amountInrCrore >= 10 ? "₹10 Cr+ committed" : "Amount stated", points: e.amountInrCrore >= 10 ? w.amountLarge : w.amountAny }] : []),
+    ];
+    const total = Math.min(100, Math.max(s.thresholds.call, lines.reduce((a, l) => a + l.points, 0)));
+    return { score: total, bucket: "call", breakdown: { lines, geoTier: tier, rule: `Open call for NGO partners${e.deadline ? ` — closes ${e.deadline}` : ""} → always Hot` } };
+  }
   if (e.signalType === "policy_change")
     return { score: 50, bucket: "policy", breakdown: { lines: [], geoTier: tier, rule: "Policy change — always shown in Policy watch" } };
 

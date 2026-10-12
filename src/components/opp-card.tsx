@@ -6,6 +6,16 @@ import { journeyStage } from "@/lib/outreach";
 import { IClock, INews, IPin, IRupee, IExt, IArrow } from "./icons";
 import { Score, SignalChip, TempBadge, ago, fmtDate, initials, inrCrore } from "./ui";
 
+// Days until an RFP / EOI closes (IST calendar days)
+export function daysLeft(deadline: string, now = new Date()) {
+  const today = new Date(new Date(now.getTime() + 5.5 * 3600_000).toISOString().slice(0, 10));
+  return Math.round((new Date(deadline).getTime() - today.getTime()) / 86_400_000);
+}
+const closes = (d: string) => {
+  const n = daysLeft(d);
+  return n <= 0 ? "closes today" : n === 1 ? "closes tomorrow" : `closes in ${n} days`;
+};
+
 export function where(e: NonNullable<SignalRow["article"]["extraction"]>) {
   return e.places.length ? e.places.slice(0, 2).join(", ") : e.panIndia ? "Pan-India" : "Location not stated";
 }
@@ -20,7 +30,7 @@ export function OppCard({ row, company, i = 0 }: { row: SignalRow; company?: Com
       <div className="row between">
         <div className="row" style={{ gap: 6 }}>
           <TempBadge b={s.bucket} />
-          <SignalChip t={e.signalType} />
+          {a.origin === "open_call" ? <span className="chip brand">Open call for NGOs</span> : <SignalChip t={e.signalType} />}
         </div>
         <Score v={s.score} b={s.bucket} />
       </div>
@@ -28,13 +38,19 @@ export function OppCard({ row, company, i = 0 }: { row: SignalRow; company?: Com
         <Link href={`/story/${a.id}`} className="opp-company">{e.company ?? "Unnamed company"}</Link>
         <div className="opp-title" style={{ marginTop: 4 }}>{e.summary}</div>
       </div>
+      {a.origin === "open_call" && e.deadline && (
+        <div className="deadline">
+          <b>{closes(e.deadline)}</b>
+          <span>Deadline {fmtDate(e.deadline, { day: "numeric", month: "short", year: "numeric" })} · apply on the source page</span>
+        </div>
+      )}
       <div className="opp-why"><b>Why it matters:</b> {e.whyItMatters}</div>
       <div className="meta">
         <span><IPin />{where(e)}</span>
         {e.amountText && <span><IRupee />{e.amountInrCrore != null ? inrCrore(e.amountInrCrore) : e.amountText}</span>}
         <span><IClock />{ago(a.publishedAt)}</span>
         <span><INews />{a.outlet ?? "news"}{s.alsoCoveredBy.length ? ` +${s.alsoCoveredBy.length}` : ""}</span>
-        {e.deadline && <span style={{ color: "var(--hot)", fontWeight: 600 }}>Deadline {fmtDate(e.deadline)}</span>}
+        {e.deadline && a.origin !== "open_call" && <span style={{ color: "var(--hot)", fontWeight: 600 }}>Deadline {fmtDate(e.deadline)}</span>}
       </div>
       <div className="row" style={{ gap: 6 }}>
         <span className="chip brand" title={j.meaning}>Buyer stage: {j.stage.replace("_", "-")}</span>

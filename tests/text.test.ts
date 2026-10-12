@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { canonicalUrl, cluster, companyKey, quoteFound, similarity, splitOutlet, withinWindow } from "@/lib/text";
-import { parseGoogleNews, parseBingNews, buildQueries, bingQueries } from "@/lib/sources";
+import { parseGoogleNews, parseBingNews, buildQueries, bingQueries, policyQueries, POLICY_LOOKBACK_DAYS, OPEN_CALL_LOOKBACK_DAYS } from "@/lib/sources";
 import { prefilterReason } from "@/lib/pipeline";
 import { inventedNumbers, journeyStage } from "@/lib/outreach";
 import { DEFAULT_SETTINGS as S } from "@/lib/settings";
@@ -59,6 +59,12 @@ describe("sources", () => {
   });
   it("Bing queries are plain keywords (its RSS ignores OR and quotes)", () => {
     expect(bingQueries(S).every((q) => !/[()"]|\bOR\b/.test(q))).toBe(true);
+  });
+  it("policy and open-call searches look back a month; news stays at 7 days", () => {
+    expect(POLICY_LOOKBACK_DAYS).toBe(30);
+    expect(OPEN_CALL_LOOKBACK_DAYS).toBe(30);
+    expect(policyQueries().every((q) => /CSR/.test(q))).toBe(true);
+    expect(buildQueries(S).some((q) => /Schedule VII/.test(q))).toBe(false);
   });
   it("builds searches from settings, so a new sector is searched next run", () => {
     const s = { ...S, sectors: [...S.sectors, { key: "women", label: "Women", keywords: ["women", "self-help group"], enabled: true }] };

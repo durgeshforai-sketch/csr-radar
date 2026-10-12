@@ -16,6 +16,7 @@ export default async function LoginPage({ searchParams }: { searchParams: Promis
   return (
     <main className="login">
       <div className="blob" />
+      <div style={{ position: "relative", display: "grid", gap: 14, width: "min(410px, 100%)" }}>
       <form action={login} className="card login-card">
         <div className="row" style={{ gap: 12 }}>
           <span className="brand-mark"><IRadar /></span>
@@ -31,9 +32,18 @@ export default async function LoginPage({ searchParams }: { searchParams: Promis
           <input type="password" name="password" autoFocus required placeholder="Radar@2026" />
         </label>
         {sp.error && <p className="error">That password didn&apos;t match.</p>}
-        <div className="alert small"><b>Examiner access:</b> password <span className="mono">Radar@2026</span></div>
         <button type="submit" className="btn primary">Sign in</button>
       </form>
+      <form action={login} className="card login-card" style={{ padding: 18 }}>
+        <input type="hidden" name="next" value={sp.next ?? "/"} />
+        <input type="hidden" name="password" value="Radar@2026" />
+        <div className="examiner">
+          <b>Examiner access</b>
+          <span className="small muted">One click, no typing. (Password: <span className="mono">Radar@2026</span>)</span>
+          <button type="submit" className="btn primary block">Enter as examiner →</button>
+        </div>
+      </form>
+      </div>
     </main>
   );
 }

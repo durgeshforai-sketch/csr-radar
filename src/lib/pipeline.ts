@@ -1,8 +1,8 @@
-import { and, desc, eq, gte, inArray, isNull, lte, sql } from "drizzle-orm";
+import { and, desc, eq, gte, inArray, isNull, lte, or, sql } from "drizzle-orm";
 import { getDb, schema } from "@/db";
 import { loadSettings } from "./settings-store";
 import type { Settings } from "./settings";
-import { bingNews, geminiSearch, googleNews, tradePress, urlKeyOf, type RawItem, type SourceResult } from "./sources";
+import { bingNews, geminiSearch, googleNews, openCalls, tradePress, urlKeyOf, OPEN_CALL_LOOKBACK_DAYS, POLICY_LOOKBACK_DAYS, type RawItem, type SourceResult } from "./sources";
 import { cluster, companyKey, quoteFound, similarity, SAME_STORY, titleKey, withinWindow } from "./text";
 import { extractBatch, findPoc, sourceText, type Extraction } from "./extract";
 import { draftOutreach } from "./outreach";
@@ -47,6 +47,8 @@ const NOISE = /\b(course|courses|admission|admissions|recruitment|vacancy|vacanc
 
 // The search queries already require CSR context, so this is a cheap negative filter: it removes obvious
 // noise and stories with no link to her sectors, CSR money or policy, before any Gemini call.
+const LONG_ORIGINS = new Set(["open_call", "policy_news"]);
+
 export function prefilterReason(it: Pick<RawItem, "title" | "snippet">, s: Settings): string | null {
   const text = `${it.title} ${it.snippet}`;
   const noise = it.title.match(NOISE);
@@ -63,6 +65,13 @@ export async function runPipeline(opts: { trigger: "daily" | "weekly" | "manual"
   const s = await loadSettings();
   const now = new Date();
   const windowStart = new Date(now.getTime() - s.windowDays * 86_400_000);
+  // Open calls stay actionable until their deadline and rule changes stay relevant for weeks: longer look-back
+  const longStart = new Date(now.getTime() - Math.max(OPEN_CALL_LOOKBACK_DAYS, POLICY_LOOKBACK_DAYS) * 86_400_000);
+  const today = now.toISOString().slice(0, 10);
+  const inScope = or(
+    gte(schema.articles.publishedAt, windowStart),
+    and(inArray(schema.articles.origin, [...LONG_ORIGINS]), gte(schema.articles.publishedAt, longStart)),
+  );
   const usage = new Usage();
   const errors: { stage: string; message: string }[] = [];
   const stats: RunStats = {
@@ -98,9 +107,9 @@ export async function runPipeline(opts: { trigger: "daily" | "weekly" | "manual"
   };
 
   try {
-    // 1 COLLECT — four live sources in parallel
+    // 1 COLLECT — five live sources in parallel
     await stage("collect");
-    const results: SourceResult[] = await Promise.all([googleNews(s), bingNews(s), tradePress(), geminiSearch(s, now, usage)]);
+    const results: SourceResult[] = await Promise.all([googleNews(s), bingNews(s), tradePress(), openCalls(s, now, usage), geminiSearch(s, now, usage)]);
     for (const r of results) {
       stats.sources.push({ source: r.source, ok: r.ok, items: r.items.length, queries: r.queries, ms: r.ms, error: r.error, skipped: r.skipped });
       if (!r.ok) errors.push({ stage: "collect", message: `${r.source}: ${r.error}` });
@@ -111,7 +120,7 @@ export async function runPipeline(opts: { trigger: "daily" | "weekly" | "manual"
 
     // 2 CLEAN — window, canonical URL, same-URL dedupe
     await stage("clean");
-    const inWindow = raw.filter((r) => withinWindow(r.publishedAt, windowStart, now));
+    const inWindow = raw.filter((r) => withinWindow(r.publishedAt, LONG_ORIGINS.has(r.origin) ? longStart : windowStart, now));
     stats.inWindow = inWindow.length;
     const byUrl = new Map<string, RawItem & { queries: string[] }>();
     for (const r of inWindow) {
@@ -123,7 +132,7 @@ export async function runPipeline(opts: { trigger: "daily" | "weekly" | "manual"
     stats.unique = byUrl.size;
 
     // 3 PRE-FILTER — free keyword check before any Gemini call
-    const kept = [...byUrl.entries()].map(([k, r]) => [k, r, prefilterReason(r, s)] as const);
+    const kept = [...byUrl.entries()].map(([k, r]) => [k, r, r.origin === "open_call" ? null : prefilterReason(r, s)] as const);
     stats.prefilteredOut = kept.filter((x) => x[2]).length;
     if (kept.length) {
       const inserted = await db
@@ -154,7 +163,7 @@ export async function runPipeline(opts: { trigger: "daily" | "weekly" | "manual"
     const windowArticles = await db
       .select()
       .from(schema.articles)
-      .where(and(gte(schema.articles.publishedAt, windowStart), lte(schema.articles.publishedAt, new Date(now.getTime() + 6 * 3600_000))))
+      .where(and(inScope, lte(schema.articles.publishedAt, new Date(now.getTime() + 6 * 3600_000))))
       .orderBy(desc(schema.articles.publishedAt));
     const done = windowArticles.filter((a) => a.extraction);
     stats.cached = done.length;
@@ -203,11 +212,19 @@ export async function runPipeline(opts: { trigger: "daily" | "weekly" | "manual"
 
     // 6 SCORE — deterministic, under today's settings
     await stage("score");
-    const readable = await db
-      .select()
-      .from(schema.articles)
-      .where(and(gte(schema.articles.publishedAt, windowStart), sql`${schema.articles.extraction} is not null`))
-      .orderBy(desc(schema.articles.publishedAt));
+    // Older-than-window stories count only if they are still-open calls or real policy changes
+    const readable = (
+      await db
+        .select()
+        .from(schema.articles)
+        .where(and(inScope, sql`${schema.articles.extraction} is not null`))
+        .orderBy(desc(schema.articles.publishedAt))
+    ).filter(
+      (a) =>
+        a.publishedAt >= windowStart ||
+        (a.origin === "open_call" && (!a.extraction?.deadline || a.extraction.deadline >= today)) ||
+        a.extraction?.signalType === "policy_change",
+    );
     const all = await db
       .select({ id: schema.articles.id, url: schema.articles.url, title: schema.articles.title, outlet: schema.articles.outlet })
       .from(schema.articles)
@@ -227,7 +244,8 @@ export async function runPipeline(opts: { trigger: "daily" | "weekly" | "manual"
       const prior = history.filter(
         (h) => h.companyKey === a.companyKey && h.id !== a.id && h.publishedAt < a.publishedAt && h.extraction && h.extraction.signalType !== "not_relevant",
       ).length;
-      return { a, ...score(e, { publishedAt: a.publishedAt, now, evidenceVerified: !!a.evidenceVerified, priorSignals: prior }, s) };
+      const openCall = a.origin === "open_call" && (!e.deadline || e.deadline >= today);
+      return { a, ...score(e, { publishedAt: a.publishedAt, now, evidenceVerified: !!a.evidenceVerified, priorSignals: prior, openCall }, s) };
     });
 
     // Same story reported by several outlets → one card, highest score leads
@@ -253,6 +271,7 @@ export async function runPipeline(opts: { trigger: "daily" | "weekly" | "manual"
       .select()
       .from(schema.articles)
       .where(and(gte(schema.articles.publishedAt, windowStart), sql`${schema.articles.extraction} is null`));
+    // (older long-window stories that were not read are not this week's news, so they are not listed)
     const coveredElsewhere = new Set(rows.flatMap((r) => r.alsoCoveredBy.map((c) => c.url)));
     for (const a of unread) {
       if (coveredElsewhere.has(a.url)) continue; // already shown as "also covered by" on another card
