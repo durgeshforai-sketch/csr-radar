@@ -119,13 +119,19 @@ export async function gdelt(s: Settings): Promise<SourceResult> {
     .flatMap((x) => x.keywords.slice(0, 2))
     .filter((w) => !w.includes("-"));
   const q = `("CSR" OR "corporate social responsibility") ${or(sectorTerms.slice(0, 8))} sourcecountry:india sourcelang:english`;
-  const url = `https://api.gdeltproject.org/api/v2/doc/doc?query=${encodeURIComponent(q)}&mode=artlist&maxrecords=75&timespan=${s.windowDays}d&format=json&sort=datedesc`;
+  // GDELT's HTTPS endpoint times out from Node (TLS connect); plain HTTP works. Public news metadata only, no secrets sent.
+  const url = `http://api.gdeltproject.org/api/v2/doc/doc?query=${encodeURIComponent(q)}&mode=artlist&maxrecords=75&timespan=${s.windowDays}d&format=json&sort=datedesc`;
   try {
-    let body = await fetchText(url, 20000);
-    if (!body.trim().startsWith("{")) {
-      // Rate limit is one request per 5 s; wait once and retry
-      await new Promise((r) => setTimeout(r, 6000));
-      body = await fetchText(url, 20000);
+    // Rate limit is one request per 5 s (answered as HTTP 429 or a plain-text notice): wait, retry twice
+    let body = "";
+    for (let attempt = 0; attempt < 3; attempt++) {
+      try {
+        body = await fetchText(url, 20000);
+        if (body.trim().startsWith("{")) break;
+      } catch (e) {
+        if (!String(e).includes("429") || attempt === 2) throw e;
+      }
+      await new Promise((r) => setTimeout(r, 6000 * (attempt + 1)));
     }
     if (!body.trim().startsWith("{")) throw new Error(body.slice(0, 120));
     const data = JSON.parse(body) as { articles?: { url: string; title: string; domain: string; seendate: string }[] };

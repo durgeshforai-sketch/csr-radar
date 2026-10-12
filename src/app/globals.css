@@ -117,7 +117,7 @@ a.link:hover { text-decoration-thickness: 2px; }
 }
 .brand { display: flex; align-items: center; gap: 10px; padding: 4px 10px 22px; }
 .brand-mark { width: 34px; height: 34px; border-radius: 10px; background: var(--brand); color: var(--brand-ink); display: grid; place-items: center; }
-.brand-name { font-family: var(--serif); font-size: 21px; font-weight: 600; letter-spacing: -0.01em; line-height: 1; }
+.brand-name { white-space: nowrap; font-family: var(--serif); font-size: 21px; font-weight: 600; letter-spacing: -0.01em; line-height: 1; }
 .brand-sub { font-size: 11.5px; color: var(--muted); margin-top: 3px; }
 .nav a {
   display: flex; align-items: center; gap: 10px; padding: 9px 12px; border-radius: 10px;
