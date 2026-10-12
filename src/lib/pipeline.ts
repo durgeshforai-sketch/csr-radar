@@ -256,12 +256,21 @@ export async function runPipeline(opts: { trigger: "daily" | "weekly" | "manual"
     const coveredElsewhere = new Set(rows.flatMap((r) => r.alsoCoveredBy.map((c) => c.url)));
     for (const a of unread) {
       if (coveredElsewhere.has(a.url)) continue; // already shown as "also covered by" on another card
+      const twin = a.filterReason ? null : readable.find((r) => similarity(r.title, a.title) >= SAME_STORY);
       rows.push({
         runId,
         articleId: a.id,
         alsoCoveredBy: [],
         score: 0,
-        breakdown: { lines: [], geoTier: "unknown", rule: a.filterReason ? `Cold: filtered before reading — ${a.filterReason}` : "Cold: not read this run (over the per-run limit or read failed)" },
+        breakdown: {
+          lines: [],
+          geoTier: "unknown",
+          rule: a.filterReason
+            ? `Cold: filtered before reading — ${a.filterReason}`
+            : twin
+              ? `Cold: same story as “${twin.title.slice(0, 70)}” (read once, not paid twice)`
+              : "Cold: not read this run (over the per-run limit or read failed; retried next run)",
+        },
         bucket: "skip",
       });
     }
